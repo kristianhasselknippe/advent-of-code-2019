@@ -68,36 +68,35 @@ compute_operation(_, LeftToProcess) :-
 	!.
 compute_operation(AllNumbers, LeftToProcess) :-
 	length(LeftToProcess, X),
-	write("Items left to process: "), write(X), nl,
-	write("Left to process "), write(LeftToProcess), nl,
 	[Code,LeftIndex,RightIndex,ResultIndex|_] = LeftToProcess,
 	value_at_pos(AllNumbers, LeftIndex, Left),
 	value_at_pos(AllNumbers, RightIndex, Right),
 	apply_opcode_to_values(Code, Left, Right, Result),
 	write("Applying: "), write(Code), write(" to "), write(Left), write(" and "), write(Right), write(" with result: "), write(Result), nl,
-	write("Result will be placed at: "), write(ResultIndex), nl,
 	replace_item_at_pos(AllNumbers, ResultIndex, Result, UpdatedNumbers),
 	nth0(ResultIndex, UpdatedNumbers, Res),
-	write("Result in updated numbers is: "), write(Res), nl,
-	write("Updated numbers: "), write(UpdatedNumbers), nl,
 	length(AllNumbers, TotalLength),
 	PlaceToSplit is TotalLength - X + 4,
-	write("Place to split: "), write(PlaceToSplit), nl,
 	drop(PlaceToSplit, UpdatedNumbers, RestToCompute),
-	write("RestToCompute: "), write(RestToCompute),nl,nl,
 	compute_operation(UpdatedNumbers, RestToCompute).
 
-compute(NumbersList) :-
-	replace_item_at_pos(NumbersList, 1, 12, A),
-	replace_item_at_pos(A, 2, 2, FinalInput),
+compute(NumbersList, ArgA, ArgB) :-
+	replace_item_at_pos(NumbersList, 1, ArgA, A),
+	replace_item_at_pos(A, 2, ArgB, FinalInput),
 	write("Final input: "), write(FinalInput), nl,
 	compute_operation(FinalInput, FinalInput).
+
+search_for_result(Input, Res, A, B) :-
+	compute(Input, A, B),
+	( A > 0, A1 is A - 1, search_for_result(Input, Res, A1, B) );
+	( A = 0, B1 is B - 1, search_for_result(Input, Res, 99, B1) );
+	( A = 0, B = 0, !).
+search_for_result(Input, Res) :-
+	search_for_result(Input, Res, 99, 99).
 
 main(_) :-
 	read_lines_from_file("./input.txt", Lines),
 	maplist(to_numbers_list, Lines, Numbers),
-	write(Numbers), nl,
-	maplist(compute, Numbers).
-
-%try 1: 394702
-%try 2: 394702
+	nth0(0, Numbers, Input),
+	write(Input), nl,
+	compute(Input, 12, 2).
