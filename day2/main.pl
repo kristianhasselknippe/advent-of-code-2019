@@ -79,12 +79,19 @@ compute_operation(AllNumbers, LeftToProcess) :-
 	replace_item_at_pos(AllNumbers, ResultIndex, Result, UpdatedNumbers),
 	nth0(ResultIndex, UpdatedNumbers, Res),
 	write("Result in updated numbers is: "), write(Res), nl,
-	write("Updated numbers: "), write(UpdatedNumbers), nl, nl,
-	drop(X - 4, UpdatedNumbers, RestToCompute),
+	write("Updated numbers: "), write(UpdatedNumbers), nl,
+	length(AllNumbers, TotalLength),
+	PlaceToSplit is TotalLength - X + 4,
+	write("Place to split: "), write(PlaceToSplit), nl,
+	drop(PlaceToSplit, UpdatedNumbers, RestToCompute),
+	write("RestToCompute: "), write(RestToCompute),nl,nl,
 	compute_operation(UpdatedNumbers, RestToCompute).
 
 compute(NumbersList) :-
-	compute_operation(NumbersList, NumbersList).
+	replace_item_at_pos(NumbersList, 1, 12, A),
+	replace_item_at_pos(A, 2, 2, FinalInput),
+	write("Final input: "), write(FinalInput), nl,
+	compute_operation(FinalInput, FinalInput).
 
 main(_) :-
 	read_lines_from_file("./input.txt", Lines),
