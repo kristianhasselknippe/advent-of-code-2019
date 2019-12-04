@@ -65,7 +65,7 @@ are_perpendicular(LA,LB, Horizontal, Vertical) :-
 		(perpendicular(LB,LA), Vertical = LA, Horizontal = LB)
 	).
 
-are_crossing([LA, LB]) :-
+are_crossing([LA, LB], CrossPoint) :-
 	are_perpendicular(
 		LA,LB,
 		line(point(HX1, HY1), point(HX2, HY2)),
@@ -78,21 +78,31 @@ are_crossing([LA, LB]) :-
 	CrossPoint = point(HY1, VX1).
 %format('And crossing at: ~w\n', CrossPoint).
 
-find_crossing(ListA, ListB, Crossing) :-
+cross_point_list([], Out, Out).
+cross_point_list([H|T], CrossPoints, Out) :-
+	(
+		are_crossing(H, Crossing),
+		cross_point_list(T, [Crossing|CrossPoints], Out)
+	);
+	cross_point_list(T, CrossPoints, Out).
+
+cross_point_list(X, Out) :-
+	cross_point_list(X, [], Out).
+
+
+find_crossing_points(ListA, ListB, CrossPoints) :-
 	length(ListA, LALen),
 	length(ListB, LBLen),
 	format("Finding crossing, ListA Len ~w, ListB Len: ~w", [LALen, LBLen]),nl,
 	findall([A,B], (member(A, ListA), member(B, ListB)), Pairs),
 	length(Pairs, LenPairs),
 	format("Lenght of pairs list: ~w\n", LenPairs),
-	include(are_crossing, Pairs, Crossing),
-	length(Crossing, Len),
+	cross_point_list(Pairs, CrossPoints),
+	length(CrossPoints, Len),
 	format("Num crossing ~w ~n", Len).
 
-manhattan_distance(point(X1,Y1), point(X2,Y2), Dist) :-
-	Hor is X1 + X2,
-	Ver is Y1 + Y2,
-	Dist is Hor + Ver.
+manhattan_distance(point(X,Y), Dist) :-
+	Dist is abs(X) + abs(Y).
 
 main(_) :-
 	read_lines_from_file('./input.txt', Lines),
@@ -101,9 +111,9 @@ main(_) :-
 	%maplist([Input]>>format('~w,\n', Input), Wire1),
 	coordinates_from_description(Wire1, Coords1),
 	coordinates_from_description(Wire2, Coords2),
-	find_crossing(Coords1,Coords2,Crossing),
+	find_crossing_points(Coords1,Coords2,Crossing),
 	maplist(manhattan_distance, Crossing, Distances),
-	minlist(Distances, Min),
+	min_list(Distances, Min),
 	format('Done. Min is ~w', Min), nl.
 
 
