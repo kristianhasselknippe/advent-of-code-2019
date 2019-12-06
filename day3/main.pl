@@ -136,6 +136,17 @@ are_crossing([LA, LB], CrossPoints) :-
 		format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [XA1,XA2,XB1,XB2,O1,O2]),
 		integers_in_range(Overlap, Ints),
 		findall(point(X, Y), member(X, Ints), CrossPoints)
+	);
+	(
+		is_vertical(LA),
+		is_vertical(LB),
+		line(point(X,YA1), point(X,YA2)) = LA,
+		line(point(X,YB1), point(X,YB2)) = LB,
+		range_overlap(range(YA1, YA2), range(YB1,YB2), Overlap),
+		range(O1,O2) = Overlap,
+		format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [YA1,YA2,YB1,YB2,O1,O2]),
+		integers_in_range(Overlap, Ints),
+		findall(point(X, Y), member(Y, Ints), CrossPoints)
 	).
 
 cross_point_list([], Out, Out).
@@ -179,8 +190,8 @@ closest_cross_on_wires(W1, W2) :-
 	format('Done. Min is ~w', Min), nl.
 
 test_data(Wire1, Wire2) :-
-	Wire1 = ['U6','R12'], %,'D6', 'L6'],
-	Wire2 = ['R4', 'U12'].%,'R4', 'D14'].
+	Wire1 = ['R4', 'U6','R12'], %,'D6', 'L6'],
+	Wire2 = ['R4', 'R4', 'U12'].%,'R4', 'D14'].
 
 with_test_data :-
 	test_data(W1,W2),
