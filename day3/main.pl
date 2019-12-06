@@ -65,24 +65,81 @@ are_perpendicular(LA,LB, Horizontal, Vertical) :-
 		(perpendicular(LB,LA), Vertical = LA, Horizontal = LB)
 	).
 
-are_crossing([LA, LB], CrossPoint) :-
-	are_perpendicular(
-		LA,LB,
-		line(point(HX1, HY1), point(HX2, HY2)),
-		line(point(VX1, VY1), point(VX2, VY2))
+range(A,B).
+
+sorted_range(range(A,A), range(A,A)).
+sorted_range(range(A,B), range(A,B)) :-
+	A < B.
+sorted_range(range(A,B), range(B,A)) :-
+	A > B.
+
+sorted_on_start(range(A1,A2), range(B1,B2), First, Last) :-
+	(
+		A1 #< B1,
+		First = range(A1,A2),
+		Last = range(B1,B2)
+	);
+	(
+		First = range(B1,B2),
+		Last = range(A1,A2)
+	).
+
+range_overlap_impl(range(A,B), range(A,B), range(A,B)).
+range_overlap_impl(range(A,B), range(B,C), range(B,B)).
+range_overlap_impl(range(A,C), range(B,C), range(B,C)) :-
+	A < B.
+range_overlap_impl(range(A1,A2), range(B1,B2), Out) :-
+	B1 #>= A1,
+	B1 #=< A2,
+	(
+		(
+			write('foo'), nl,
+			B2 #=< A2,
+			Out = range(B1,B2)
+		);
+		(
+			write('bar'), nl,
+			A2 #=< B2,
+			Out = range(B1, A2)
+		)
+	).
+
+range_overlap(A,B,Out) :-
+	sorted_range(A, ASorted),
+	sorted_range(B, BSorted),
+	format('A: ~w, B: ~w~n', [ASorted,BSorted]),
+	sorted_on_start(ASorted,BSorted,L,R),
+	format('Left ~w, Right: ~w~n', [L,R]),
+	range_overlap_impl(L,R,Out).
+
+are_crossing([LA, LB], CrossPoints) :-
+	(
+		are_perpendicular(
+			LA,LB,
+			line(point(HX1, HY1), point(HX2, HY2)),
+			line(point(VX1, VY1), point(VX2, VY2))
+		),
+		MinHorX is min(HX1, HX2),
+		MaxHorX is max(HX1, HX2),
+		VX1 #= VX2,
+		MinHorX =< VX1, VX1 =< MaxHorX,
+		CrossPoints = [point(HY1, VX1)]
 	),
-	MinHorX is min(HX1, HX2),
-	MaxHorX is max(HX1, HX2),
-	VX1 #= VX2,
-	MinHorX < VX1, VX1 < MaxHorX,
-	CrossPoint = point(HY1, VX1).
+	(
+		is_horizontal(LA),
+		line(point(XA1, _), point(XA2, _)) = LA,
+		line(point(XB1, _), point(XB2, _)) = LB
+		%MinHorX is min(min(HX1, HX2), mina(HX2
+	)
+	.
 %format('And crossing at: ~w\n', CrossPoint).
 
 cross_point_list([], Out, Out).
 cross_point_list([H|T], CrossPoints, Out) :-
 	(
 		are_crossing(H, Crossing),
-		cross_point_list(T, [Crossing|CrossPoints], Out)
+		append(CrossPoints, Crossing, AllSoFar),
+		cross_point_list(T, AllSoFar, Out)
 	);
 	cross_point_list(T, CrossPoints, Out).
 
@@ -98,22 +155,33 @@ find_crossing_points(ListA, ListB, CrossPoints) :-
 	length(Pairs, LenPairs),
 	format("Lenght of pairs list: ~w\n", LenPairs),
 	cross_point_list(Pairs, CrossPoints),
-	length(CrossPoints, Len),
-	format("Num crossing ~w ~n", Len).
+	length(CrossPoints, Len).
 
 manhattan_distance(point(X,Y), Dist) :-
 	Dist is abs(X) + abs(Y).
+
+closest_cross_on_wires(W1, W2) :-
+	coordinates_from_description(W1, Coords1),
+	coordinates_from_description(W2, Coords2),
+	find_crossing_points(Coords1,Coords2,CrossingWithOrigin),
+	exclude([point(X,X)]>>(X #= 0), CrossingWithOrigin, Crossing),
+	length(Crossing, LengthCrossing),
+	format('Num crossings ~w~n', [LengthCrossing]),
+	maplist(manhattan_distance, Crossing, Distances),
+	min_list(Distances, Min),
+	format('Done. Min is ~w', Min), nl.
+
+test_data(Wire1, Wire2) :-
+	Wire1 = ['U6','R12','D6', 'L6'],
+	Wire2 = ['R4', 'U12','R4', 'D14'].
+
+with_test_data :-
+	test_data(W1,W2),
+	closest_cross_on_wires(W1, W2).
 
 main(_) :-
 	read_lines_from_file('./input.txt', Lines),
 	maplist(string_to_op_list, Lines, Wires),
 	[Wire1,Wire2] = Wires,
 	%maplist([Input]>>format('~w,\n', Input), Wire1),
-	coordinates_from_description(Wire1, Coords1),
-	coordinates_from_description(Wire2, Coords2),
-	find_crossing_points(Coords1,Coords2,Crossing),
-	maplist(manhattan_distance, Crossing, Distances),
-	min_list(Distances, Min),
-	format('Done. Min is ~w', Min), nl.
-
-
+	closest_cross_on_wires(Wire1, Wire2).
