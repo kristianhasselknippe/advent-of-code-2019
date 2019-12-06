@@ -35,18 +35,17 @@ decode_command(CommandString, Command) :-
 	number_chars(DistNum, Distance),
 	Command = command(DirString, DistNum).
 
-coordinates_from_description([],[], _).
-coordinates_from_description([WH|WRest], [CH|CRest], LastOrigin) :-
-	point(OX,OY) = LastOrigin,
+lines_from_write_description([],[], _).
+lines_from_write_description([WH|WRest], [CH|CRest], LastOrigin) :-
 	decode_command(WH, Command),
 	apply_command(Command, LastOrigin, CH),
-	%format('The line: ~w \n', CH),
+	format('New line: ~w~n', CH),
 	line(_, NewOrigin) = CH,
-	coordinates_from_description(WRest, CRest, NewOrigin).
+	lines_from_write_description(WRest, CRest, NewOrigin).
 
-coordinates_from_description(Wire, Coordinates) :-
+lines_from_write_description(Wire, Coordinates) :-
 	Origin = point(0,0),
-	coordinates_from_description(Wire, Coordinates, Origin).
+	lines_from_write_description(Wire, Coordinates, Origin).
 
 % all lines are either horizontal or vertical
 is_horizontal(line(point(XA, YA), point(XB,YB))) :-
@@ -93,12 +92,10 @@ range_overlap_impl(range(A1,A2), range(B1,B2), Out) :-
 	B1 #=< A2,
 	(
 		(
-			write('foo'), nl,
 			B2 #=< A2,
 			Out = range(B1,B2)
 		);
 		(
-			write('bar'), nl,
 			A2 #=< B2,
 			Out = range(B1, A2)
 		)
@@ -107,12 +104,16 @@ range_overlap_impl(range(A1,A2), range(B1,B2), Out) :-
 range_overlap(A,B,Out) :-
 	sorted_range(A, ASorted),
 	sorted_range(B, BSorted),
-	format('A: ~w, B: ~w~n', [ASorted,BSorted]),
 	sorted_on_start(ASorted,BSorted,L,R),
-	format('Left ~w, Right: ~w~n', [L,R]),
 	range_overlap_impl(L,R,Out).
 
+
+integers_in_range(R, IntList) :-
+	sorted_range(R, range(A,B)),
+	findall(X, between(A,B, X), IntList).
+
 are_crossing([LA, LB], CrossPoints) :-
+	format('Testing pair: ~w and ~w~n', [LA,LB]),
 	(
 		are_perpendicular(
 			LA,LB,
@@ -124,15 +125,18 @@ are_crossing([LA, LB], CrossPoints) :-
 		VX1 #= VX2,
 		MinHorX =< VX1, VX1 =< MaxHorX,
 		CrossPoints = [point(HY1, VX1)]
-	),
+	);
 	(
 		is_horizontal(LA),
-		line(point(XA1, _), point(XA2, _)) = LA,
-		line(point(XB1, _), point(XB2, _)) = LB
-		%MinHorX is min(min(HX1, HX2), mina(HX2
-	)
-	.
-%format('And crossing at: ~w\n', CrossPoint).
+		is_horizontal(LB),
+		line(point(XA1, Y), point(XA2, Y)) = LA,
+		line(point(XB1, Y), point(XB2, Y)) = LB,
+		range_overlap(range(XA1, XA2), range(XB1,XB2), Overlap),
+		range(O1,O2) = Overlap,
+		format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [XA1,XA2,XB1,XB2,O1,O2]),
+		integers_in_range(Overlap, Ints),
+		findall(point(X, Y), member(X, Ints), CrossPoints)
+	).
 
 cross_point_list([], Out, Out).
 cross_point_list([H|T], CrossPoints, Out) :-
@@ -151,29 +155,32 @@ find_crossing_points(ListA, ListB, CrossPoints) :-
 	length(ListA, LALen),
 	length(ListB, LBLen),
 	format("Finding crossing, ListA Len ~w, ListB Len: ~w", [LALen, LBLen]),nl,
+	format("Finding crossing, ListA ~w, ListB: ~w", [ListA, ListB]),nl,
 	findall([A,B], (member(A, ListA), member(B, ListB)), Pairs),
 	length(Pairs, LenPairs),
-	format("Lenght of pairs list: ~w\n", LenPairs),
+	format('Length pairs: ~w~n', LenPairs),
+	format("Pairs: ~w\n", [Pairs]),
 	cross_point_list(Pairs, CrossPoints),
+	format('Crossing points: ~w~n', [CrossPoints]),
 	length(CrossPoints, Len).
 
 manhattan_distance(point(X,Y), Dist) :-
 	Dist is abs(X) + abs(Y).
 
 closest_cross_on_wires(W1, W2) :-
-	coordinates_from_description(W1, Coords1),
-	coordinates_from_description(W2, Coords2),
+	lines_from_write_description(W1, Coords1),
+	lines_from_write_description(W2, Coords2),
 	find_crossing_points(Coords1,Coords2,CrossingWithOrigin),
 	exclude([point(X,X)]>>(X #= 0), CrossingWithOrigin, Crossing),
 	length(Crossing, LengthCrossing),
-	format('Num crossings ~w~n', [LengthCrossing]),
+	format('Num crossings ~w~n', [Crossing]),
 	maplist(manhattan_distance, Crossing, Distances),
 	min_list(Distances, Min),
 	format('Done. Min is ~w', Min), nl.
 
 test_data(Wire1, Wire2) :-
-	Wire1 = ['U6','R12','D6', 'L6'],
-	Wire2 = ['R4', 'U12','R4', 'D14'].
+	Wire1 = ['U6','R12'], %,'D6', 'L6'],
+	Wire2 = ['R4', 'U12'].%,'R4', 'D14'].
 
 with_test_data :-
 	test_data(W1,W2),
