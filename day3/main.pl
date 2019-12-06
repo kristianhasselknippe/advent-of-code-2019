@@ -201,6 +201,14 @@ closest_cross_on_wires(W1, W2) :-
 %U98,R91,D20,R16,D67,R40,U7,R15,U6,R7 = distance 135
 
 test_data(Wire1, Wire2) :-
+	Wire1 = ['R98','U47','R26','D63','R33','U87','L62','D20','R33','U53','R51'],
+	Wire2 = ['U98','R91','D20','R16','D67','R40','U7','R15','U6','R7'].
+
+test_data3(Wire1, Wire2) :-
+	Wire1 = ['R75','D30','R83','U83','L12','D49','R71','U7','L72'],
+	Wire2 = ['U62','R66','U55','R34','D71','R55','D58','R83'].
+
+test_data_2(Wire1, Wire2) :-
 	Wire1 = ['U6','R12','D6', 'L6'],
 	Wire2 = ['R4', 'U12','R4', 'D14'].
 
