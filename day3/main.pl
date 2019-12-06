@@ -111,19 +111,26 @@ integers_in_range(R, IntList) :-
 	sorted_range(R, range(A,B)),
 	findall(X, between(A,B, X), IntList).
 
+in_range(R, X) :-
+	sorted_range(R, range(A,B)),
+	X #>= A,
+	X #=< B.
+
 are_crossing([LA, LB], CrossPoints) :-
 	%format('Testing pair: ~w and ~w~n', [LA,LB]),
 	(
 		are_perpendicular(
 			LA,LB,
-			line(point(HX1, HY1), point(HX2, _HY2)),
-			line(point(VX1, _VY1), point(VX2, _VY2))
+			line(point(HX1, HY), point(HX2, HY)),
+			line(point(VX, VY1), point(VX, VY2))
 		),
-		MinHorX is min(HX1, HX2),
-		MaxHorX is max(HX1, HX2),
-		VX1 #= VX2,
-		MinHorX =< VX1, VX1 =< MaxHorX,
-		CrossPoints = [point(HY1, VX1)]
+		%write('are perpendicular'), nl,
+		%write(VX), write(' between '), write(HX1), write(' and '), write(HX2), nl,
+		%write(HY), write(' between '), write(VY1), write(' and '), write(VY2), nl,
+		in_range(range(HX1, HX2), VX),
+		in_range(range(VY1, VY2), HY),
+		CrossPoints = [point(VX, HY)]
+		%write('Cross point: '), write(CrossPoints), nl
 	);
 	(
 		is_horizontal(LA),
@@ -131,7 +138,7 @@ are_crossing([LA, LB], CrossPoints) :-
 		line(point(XA1, Y), point(XA2, Y)) = LA,
 		line(point(XB1, Y), point(XB2, Y)) = LB,
 		range_overlap(range(XA1, XA2), range(XB1,XB2), Overlap),
-		%range(O1,O2) = Overlap,
+		range(O1,O2) = Overlap,
 		%format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [XA1,XA2,XB1,XB2,O1,O2]),
 		integers_in_range(Overlap, Ints),
 		findall(point(X, Y), member(X, Ints), CrossPoints)
@@ -142,7 +149,7 @@ are_crossing([LA, LB], CrossPoints) :-
 		line(point(X,YA1), point(X,YA2)) = LA,
 		line(point(X,YB1), point(X,YB2)) = LB,
 		range_overlap(range(YA1, YA2), range(YB1,YB2), Overlap),
-		%range(O1,O2) = Overlap,
+		range(O1,O2) = Overlap,
 		%format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [YA1,YA2,YB1,YB2,O1,O2]),
 		integers_in_range(Overlap, Ints),
 		findall(point(X, Y), member(Y, Ints), CrossPoints)
@@ -182,13 +189,20 @@ closest_cross_on_wires(W1, W2) :-
 	exclude([point(X,X)]>>(X #= 0), CrossingWithOrigin, Crossing),
 	length(Crossing, LengthCrossing),
 	format('Num crossings ~w~n', [LengthCrossing]),
+	format('Crossings ~w~n', [Crossing]),
 	maplist(manhattan_distance, Crossing, Distances),
 	min_list(Distances, Min),
 	format('Done. Min is ~w', Min), nl.
 
+%Example data
+%R75,D30,R83,U83,L12,D49,R71,U7,L72
+%U62,R66,U55,R34,D71,R55,D58,R83 = distance 159
+%R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51
+%U98,R91,D20,R16,D67,R40,U7,R15,U6,R7 = distance 135
+
 test_data(Wire1, Wire2) :-
-	Wire1 = ['R4', 'U6','R12'], %,'D6', 'L6'],
-	Wire2 = ['R4', 'R4', 'U12'].%,'R4', 'D14'].
+	Wire1 = ['U6','R12','D6', 'L6'],
+	Wire2 = ['R4', 'U12','R4', 'D14'].
 
 with_test_data :-
 	test_data(W1,W2),
