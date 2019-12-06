@@ -5,28 +5,21 @@
 string_to_op_list(String, OpList) :-
 	split_string(String, ",", "", OpList).
 
-point(X,Y) :-
-	number(X),
-	number(Y).
+point(number(X),number(Y), number(Distance)).
 
-print_point(P) :-
-	point(X, Y) = P,
-	format('X: ~w, Y: ~w', X, Y).
-
-line(A,B) :-
-	point(_, _) = A,
-	point(_, _) = B.
+line(point(_,_),point(_,_)).
 
 command(_Direction, _Distance).
 
 apply_command(Command, From, Line) :-
 	command(Direction, Distance) = Command,
-	point(X,Y) = From,
+	point(X,Y, OldDistance) = From,
+	DistanceToEndPoint is OldDistance + Distance,
 	(
-		(Direction = "U", NY is Y - Distance, Line = line(From, point(X, NY) ));
-		(Direction = "D", NY is Y + Distance, Line = line(From, point(X, NY) ));
-		(Direction = "L", NX is X - Distance, Line = line(From, point(NX, Y) ));
-		(Direction = "R", NX is X + Distance, Line = line(From, point(NX, Y) ))
+		(Direction = "U", NY is Y - Distance, Line = line(From, point(X, NY, DistanceToEndPoint)));
+		(Direction = "D", NY is Y + Distance, Line = line(From, point(X, NY, DistanceToEndPoint) ));
+		(Direction = "L", NX is X - Distance, Line = line(From, point(NX, Y, DistanceToEndPoint) ));
+		(Direction = "R", NX is X + Distance, Line = line(From, point(NX, Y, DistanceToEndPoint) ))
 	).
 
 decode_command(CommandString, Command) :-
@@ -43,11 +36,11 @@ lines_from_write_description([WH|WRest], [CH|CRest], LastOrigin) :-
 	lines_from_write_description(WRest, CRest, NewOrigin).
 
 lines_from_write_description(Wire, Coordinates) :-
-	Origin = point(0,0),
+	Origin = point(0,0,0),
 	lines_from_write_description(Wire, Coordinates, Origin).
 
 % all lines are either horizontal or vertical
-is_horizontal(line(point(XA, YA), point(XB,YB))) :-
+is_horizontal(line(point(XA, YA, _), point(XB,YB, _))) :-
 	XA #\= XB,
 	YA = YB.
 is_vertical(A) :-
@@ -116,43 +109,73 @@ in_range(R, X) :-
 	X #>= A,
 	X #=< B.
 
+range_magniture(R, Mag) :-
+	sorted_range(R, range(A,B)),
+	Mag is B - A.
+
+dist(A,B,Dist) :-
+	(
+		A < B,
+		Dist is B - A
+	);
+	(
+		B < A,
+		Dist is A - B
+	).
+
+dist_from_start_of_range(R, X, Dist) :-
+	in_range(R, X),
+	range(A,B) = R,
+	range_magniture(R, Mag),
+	%Move range to poisitive space
+	format('Range: ~w, X: ~w, Mag: ~w~n', [R,X,Mag]),
+	APos is A + Mag,
+	XPos is X + Mag,
+	dist(XPos, APos, Dist),
+	write('The dist: '), write(Dist), nl.
+
 are_crossing([LA, LB], CrossPoints) :-
 	%format('Testing pair: ~w and ~w~n', [LA,LB]),
 	(
 		are_perpendicular(
 			LA,LB,
-			line(point(HX1, HY), point(HX2, HY)),
-			line(point(VX, VY1), point(VX, VY2))
+			line(point(HX1, HY, D11), point(HX2, HY, D12)),
+			line(point(VX, VY1, D21), point(VX, VY2, D22))
 		),
 		%write('are perpendicular'), nl,
-		%write(VX), write(' between '), write(HX1), write(' and '), write(HX2), nl,
-		%write(HY), write(' between '), write(VY1), write(' and '), write(VY2), nl,
-		in_range(range(HX1, HX2), VX),
-		in_range(range(VY1, VY2), HY),
-		CrossPoints = [point(VX, HY)]
+		RH = range(HX1, HX2),
+		RV = range(VY1, VY2),
+		in_range(RH, VX),
+		in_range(RV, HY),
+		dist_from_start_of_range(RH, VX, VDist),
+		dist_from_start_of_range(RV, HY, HDist),
+		TotDist is VDist + D21 + HDist + D11,
+		write(LA), write(' ' ), write(LB), nl,
+		write('Are perpendicular, VHalf: '), write(VDist), write(' HHalf: '), write(HDist), write(' , tot: '), write(TotDist), nl,
+		CrossPoints = [point(VX, HY, TotDist)]
 		%write('Cross point: '), write(CrossPoints), nl
 	);
 	(
 		is_horizontal(LA),
 		is_horizontal(LB),
-		line(point(XA1, Y), point(XA2, Y)) = LA,
-		line(point(XB1, Y), point(XB2, Y)) = LB,
+		line(point(XA1, Y, Dist11), point(XA2, Y, Dist12)) = LA,
+		line(point(XB1, Y, Dist21), point(XB2, Y, Dist22)) = LB,
 		range_overlap(range(XA1, XA2), range(XB1,XB2), Overlap),
 		range(O1,O2) = Overlap,
 		%format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [XA1,XA2,XB1,XB2,O1,O2]),
 		integers_in_range(Overlap, Ints),
-		findall(point(X, Y), member(X, Ints), CrossPoints)
+		findall(point(X, Y, Dist1 + X), member(X, Ints), CrossPoints)
 	);
 	(
 		is_vertical(LA),
 		is_vertical(LB),
-		line(point(X,YA1), point(X,YA2)) = LA,
-		line(point(X,YB1), point(X,YB2)) = LB,
+		line(point(X,YA1, Dist11), point(X,YA2, Dist12)) = LA,
+		line(point(X,YB1, Dist21), point(X,YB2, Dist22)) = LB,
 		range_overlap(range(YA1, YA2), range(YB1,YB2), Overlap),
 		range(O1,O2) = Overlap,
 		%format('Overlap between (~w,~w) and (~w,~w) => (~w,~w)~n', [YA1,YA2,YB1,YB2,O1,O2]),
 		integers_in_range(Overlap, Ints),
-		findall(point(X, Y), member(Y, Ints), CrossPoints)
+		findall(point(X, Y, Dist11 + Y), member(Y, Ints), CrossPoints)
 	).
 
 cross_point_list([], Out, Out).
@@ -179,18 +202,32 @@ find_crossing_points(ListA, ListB, CrossPoints) :-
 	%format("Pairs: ~w\n", [Pairs]),
 	cross_point_list(Pairs, CrossPoints).
 
-manhattan_distance(point(X,Y), Dist) :-
+manhattan_distance(point(X,Y, _), Dist) :-
 	Dist is abs(X) + abs(Y).
 
-closest_cross_on_wires(W1, W2) :-
+wire_dist(point(_,_,Dist), Dist).
+
+closest_cross_on_wires_manhattan(W1, W2) :-
 	lines_from_write_description(W1, Coords1),
 	lines_from_write_description(W2, Coords2),
 	find_crossing_points(Coords1,Coords2,CrossingWithOrigin),
-	exclude([point(X,X)]>>(X #= 0), CrossingWithOrigin, Crossing),
+	exclude([point(X,X, _)]>>(X #= 0), CrossingWithOrigin, Crossing),
 	length(Crossing, LengthCrossing),
 	format('Num crossings ~w~n', [LengthCrossing]),
 	format('Crossings ~w~n', [Crossing]),
 	maplist(manhattan_distance, Crossing, Distances),
+	min_list(Distances, Min),
+	format('Done. Min is ~w', Min), nl.
+
+closest_cross_wire_distance(W1, W2) :-
+	lines_from_write_description(W1, Coords1),
+	lines_from_write_description(W2, Coords2),
+	find_crossing_points(Coords1,Coords2,CrossingWithOrigin),
+	exclude([point(X,X, _)]>>(X #= 0), CrossingWithOrigin, Crossing),
+	length(Crossing, LengthCrossing),
+	format('Num crossings ~w~n', [LengthCrossing]),
+	format('Crossings ~w~n', [Crossing]),
+	maplist(wire_dist, Crossing, Distances),
 	min_list(Distances, Min),
 	format('Done. Min is ~w', Min), nl.
 
@@ -214,11 +251,15 @@ test_data_2(Wire1, Wire2) :-
 
 with_test_data :-
 	test_data(W1,W2),
-	closest_cross_on_wires(W1, W2).
+	closest_cross_wire_distance(W1, W2).
+
+with_test_data3 :-
+	test_data3(W1,W2),
+	closest_cross_wire_distance(W1, W2).
 
 main(_) :-
 	read_lines_from_file('./input.txt', Lines),
 	maplist(string_to_op_list, Lines, Wires),
 	[Wire1,Wire2] = Wires,
 	%maplist([Input]>>format('~w,\n', Input), Wire1),
-	closest_cross_on_wires(Wire1, Wire2).
+	closest_cross_wire_distance(Wire1, Wire2).
