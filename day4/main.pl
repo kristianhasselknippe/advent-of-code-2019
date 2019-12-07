@@ -31,14 +31,14 @@ string_number(A,B) :-
 char_string(A,B) :-
 	string_chars(B, [A]).
 
-
-got_double(A) --> { B #\= A }, [B], last_was_single(B).
-got_double(A) --> [A,A], got_double(A).
-got_double(_) --> [].
-last_was_single(A) --> [A], got_double(A).
-last_was_single(A) --> { B #\= A }, [B], last_was_single(B).
-double_rule --> [A,A], got_double(A).
-double_rule --> [A], last_was_single(A).
+double_rule_done --> [].
+double_rule_done --> [_], double_rule_done.
+double_rule(X) --> { A #\= X, A #\= B }, [A,A,B], double_rule_done.
+double_rule(_) --> { A #\= B }, [B,A,A].
+double_rule(_) --> { A #\= B, A #\= C }, [B,A,A,C].
+double_rule(_) --> [A], double_rule(A).
+double_rule --> { A #\= B }, [A,A,B], double_rule_done.
+double_rule --> [A], double_rule(A).
 
 number_digits(Num, Digits) :-
 	number_chars(Num, Chars),
@@ -48,7 +48,8 @@ number_digits(Num, Digits) :-
 adjacent_digits(X) :-
 	number(X),
 	number_digits(X, Digits),
-	list_has_adjacent(Digits, []).
+	phrase(double_rule, Digits),
+	format('Are adjacent ~w~n', [Digits]), nl.
 
 write_type(X) :-
 	number(X),
@@ -84,22 +85,16 @@ satisfies(X) :-
 	never_decreasing(X),
 	write(X).
 
-
-never_decreasing_test([], Out, Out).
-never_decreasing_test([H|Rest], Num, Out) :-
-	never_decreasing(H),
-	Num is Num + 1.
-never_decreasing_test(Numbers, Out) :-
-	never_decreasing_test(Numbers, 0, Out).
-
-
 test_number(X,range(From, To)) :-
 	between(From,To,X),
 	adjacent_digits(X),
 	never_decreasing(X).
 
 main(_) :-
-	findall(X, (between(137683, 596253, X), adjacent_digits(X)), AllWithAdjacentWithSomeDuplicates),
+	findall(X, (between(137683, 596253, X), test_never_decreasing(X)), NeverDecreasing),
+	length(NeverDecreasing, LL),
+	format('Length of never decreasing ~w~n', NeverDecreasing),
+	findall(Y, (member(Y, NeverDecreasing), adjacent_digits(Y)), AllWithAdjacentWithSomeDuplicates),
 	sort(AllWithAdjacentWithSomeDuplicates, AllWithAdjacent),
 	length(AllWithAdjacent, AWL),
 	format('All adjacent length ~w~n', [AWL]),
