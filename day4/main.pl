@@ -32,9 +32,13 @@ char_string(A,B) :-
 	string_chars(B, [A]).
 
 
-list_has_adjacent([A,A|_]).
-list_has_adjacent([A|Rest]) :-
-	list_has_adjacent(Rest).
+got_double(A) --> { B #\= A }, [B], last_was_single(B).
+got_double(A) --> [A,A], got_double(A).
+got_double(_) --> [].
+last_was_single(A) --> [A], got_double(A).
+last_was_single(A) --> { B #\= A }, [B], last_was_single(B).
+double_rule --> [A,A], got_double(A).
+double_rule --> [A], last_was_single(A).
 
 number_digits(Num, Digits) :-
 	number_chars(Num, Chars),
@@ -44,7 +48,7 @@ number_digits(Num, Digits) :-
 adjacent_digits(X) :-
 	number(X),
 	number_digits(X, Digits),
-	list_has_adjacent(Digits).
+	list_has_adjacent(Digits, []).
 
 write_type(X) :-
 	number(X),
