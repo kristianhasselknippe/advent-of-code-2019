@@ -1,23 +1,19 @@
 :- use_module(aoc).
 :- use_module(library(yall)).
-:- use_module(library(clpfd)).
 :- use_module(library(lists)).
 
-orbit(Center, Orbiter) :-
-	string(Center), string(Orbiter).
+orbit(A, B) :-
+	string(A),
+	string(B).
 
 decode_orbit(Line, Orbit) :-
 	split_string(Line, ")", "", [Center, Orbiter]),
 	Orbit = orbit(Center, Orbiter).
 
-indirect_orbit(A,C) :-
-	orbit(A,B),
-	orbit(B,C).
-
-path(A,A,Orbits,0).   % two nodes are connected, if
-path(A,B,Orbits,Length) :-   % two nodes are connected, if
-	%format('Walking for orbiter: ~w~n', B),
-	walk(Orbits,A,B,[],[],Path), % - if we can walk from one to the other,
+path(A,A,Orbits,0).
+path(To,From,Orbits,Length) :-
+	format('Walking to orbiter: ~w, from ~w~n', [To, From]),
+	walk(Orbits,To,From,[],[],Path),
 	length(Path, Length).
 
 walk(Orbits,A,B,Visited,AccPath,Out) :-
@@ -25,17 +21,19 @@ walk(Orbits,A,B,Visited,AccPath,Out) :-
 	Member = orbit(A,X),
 	Out = [Member|AccPath],
 	length(Out, Len),
-	%format('   found path~w\n', Len),
 	B = X.
 
 walk(Orbits,A,B,Visited,AccPath,Path) :-
 	length(AccPath, PathLength),
-	%format('path length ~w~n', [PathLength]),
 	member(Member, Orbits),
-	Member = orbit(A,X),
+	(
+		orbit(A,X) = Member;
+		orbit(X,A) = Member
+	),
 	not(member(X,Visited)),
 	(
 		(
+			Out = [Member|AccPath],
 			B = X
 		);
 		(
@@ -49,10 +47,8 @@ sum(A, B, Out) :-
 sum_of_numbers(List, Out) :-
 	foldl(sum, List, 0, Out).
 
-indirect_orbits(A, B, Count, Num) :-
-	indirect_orbit(A,B).
 
-main(_) :-
+part_one(_) :-
 	read_lines_from_file('./input.txt', Lines),
 	maplist(decode_orbit, Lines, Orbits),
 	maplist([X,[A,B]]>>(X = orbit(A,B)), Orbits, Pairs),
@@ -64,3 +60,11 @@ main(_) :-
 	format('Lengths: ~w~n', Lengths),
 	sum_of_numbers(Lengths, Result),
 	format('Total length: ~w~n', Result).
+
+main(_) :-
+	read_lines_from_file('./input.txt', Lines),
+	maplist(decode_orbit, Lines, Orbits),
+	%format('Orbits ~w~n', [Orbits]),
+	path("SAN", "YOU", Orbits, Length),
+	WithoutFirstSteps is Length - 2,
+	format('Length from YOU to SAN: ~w~n', WithoutFirstSteps).
