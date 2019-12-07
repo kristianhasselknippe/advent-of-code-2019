@@ -13,6 +13,20 @@ indirect_orbit(A,C) :-
 	orbit(A,B),
 	orbit(B,C).
 
+path(A,B,Orbits,Length) :-   % two nodes are connected, if
+	walk(A,B,[],Orbits), % - if we can walk from one to the other,
+	length(Edges, Length).
+
+walk(A,B,Orbits,Orbits).
+walk(A,B,V,Orbits) :-
+  orbit(A,X) ,
+  not(member(X,V)) ,
+  (
+	B = X
+  ;
+	walk(X,B,[A|V])
+  ).
+
 indirect_orbits(A, B, Count, Num) :-
 	indirect_orbit(A,B).
 
@@ -22,5 +36,5 @@ main(_) :-
 	maplist([X,[A,B]]>>(X = orbit(A,B)), Orbits, Pairs),
 	flatten(Pairs, OrbitersWithDups),
 	sort(OrbitersWithDups, Orbiters),
-	write(Orbiters).
-
+	path('Z58', 'COM', Orbits, Length),
+	write(Length).
