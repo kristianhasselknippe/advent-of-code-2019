@@ -53,7 +53,7 @@ indirect_orbits(A, B, Count, Num) :-
 	indirect_orbit(A,B).
 
 main(_) :-
-	read_lines_from_file('./testinput.txt', Lines),
+	read_lines_from_file('./input.txt', Lines),
 	maplist(decode_orbit, Lines, Orbits),
 	maplist([X,[A,B]]>>(X = orbit(A,B)), Orbits, Pairs),
 	flatten(Pairs, OrbitersWithDups),
