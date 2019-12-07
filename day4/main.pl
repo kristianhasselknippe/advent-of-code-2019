@@ -17,16 +17,13 @@
 %Your puzzle input is 137683-596253.
 %
 :- use_module(library(clpfd)).
+:- use_module(library(solution_sequences)).
 
 is_six_digit(X) :-
 	number(X),
 	number_chars(X, Chars),
 	length(Chars, Len),
 	Len = 6.
-
-within_range(Num) :-
-	Num #>= 137683,
-	Num #=< 596253.
 
 string_number(A,B) :-
 	number_string(B,A).
@@ -37,7 +34,6 @@ char_string(A,B) :-
 
 list_has_adjacent([A,A|_]).
 list_has_adjacent([A|Rest]) :-
-	write(A),
 	list_has_adjacent(Rest).
 
 number_digits(Num, Digits) :-
@@ -50,23 +46,72 @@ adjacent_digits(X) :-
 	number_digits(X, Digits),
 	list_has_adjacent(Digits).
 
+write_type(X) :-
+	number(X),
+	format('~w is a number~n', X).
+write_type(X) :-
+	string(X),
+	format('~w is a string~n', X).
+write_type(X) :-
+	atom(X),
+	format('~w is an atom~n', X).
+write_type(X) :-
+	is_list(X),
+	format('~w is an array~n', X).
+write_type(X) :-
+	format('~w is unknown type~n', X).
 
-never_decreasing([]).
+
 never_decreasing([_]).
 never_decreasing([A,B|Rest]) :-
-	write(A), write(B), nl,
+	%format('bar [~w, ~w|~w]\n', [A,B,Rest]),
 	A #=< B,
-	write('foo'), nl,
 	never_decreasing([B|Rest]).
-
 test_never_decreasing(X) :-
+	number(X),
+	%format('X is now: ~w~n', [X]),
 	number_digits(X, Digits),
 	never_decreasing(Digits).
+	%format('    did satisfy: ~w~n', [X]).
 
 satisfies(X) :-
-	within_range(X),
-	write('within range: '), write(X),
 	adjacent_digits(X),
-	write('adjacent'),
+	%format('Satisfies adjacent: ~w~n', X),
+	never_decreasing(X),
+	write(X).
+
+
+never_decreasing_test([], Out, Out).
+never_decreasing_test([H|Rest], Num, Out) :-
+	never_decreasing(H),
+	Num is Num + 1.
+never_decreasing_test(Numbers, Out) :-
+	never_decreasing_test(Numbers, 0, Out).
+
+
+test_number(X,range(From, To)) :-
+	between(From,To,X),
+	adjacent_digits(X),
 	never_decreasing(X).
 
+main(_) :-
+	findall(X, (between(137683, 596253, X), adjacent_digits(X)), AllWithAdjacentWithSomeDuplicates),
+	sort(AllWithAdjacentWithSomeDuplicates, AllWithAdjacent),
+	length(AllWithAdjacent, AWL),
+	format('All adjacent length ~w~n', [AWL]),
+	findall(Y, (member(Y, AllWithAdjacent), test_never_decreasing(Y)), Output),
+	length(Output, Len),
+	format('Num members: ~w~n', Len).
+
+test(X) :-
+	adjacent_digits(X),
+	never_decreasing(X).
+
+test1 :-
+	test(123789).
+
+test2 :-
+	test(111111).
+
+test3 :-
+	test(223450).
