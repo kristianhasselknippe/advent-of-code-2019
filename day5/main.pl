@@ -1,22 +1,52 @@
+:- use_module(aoc).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
 :- use_module(library(dialect/hprolog)).
 
-equal_t(X, Y, T) :-
-   =(X, Y, T).
+is_mode(position).
+is_mode(immediate).
 
-mul_op(A,B,Sum) :-
-	Sum is A * B.
+decode_mode(0, position).
+decode_mode(1, immediate).
 
-opcode(1, [A,B,Res]>>( Res is A + B)). % Add
-opcode(2, [A,B,Res]>>( Res is A * B)). % Mul
-opcode(3, [A]>>(A)). % Store
-opcode(4, [A]>>(write(A))) % Write
-opcode(99, done_op). % Done
+%! decode_opcode(++Code:int, -Opcode:atom, -InstructionLength:int).
+decode_opcode(1, add_op, 4).
+decode_opcode(2, mul_op, 4).
+decode_opcode(3, store_op, 2).
+decode_opcode(4, write_op, 2).
+decode_opcode(99, done_op, 0).
 
-%The intcode as number supplied directly from the input
-decode_intcode(IntCode) :-
-	number_chars
+opcode(_Op,_Mode).
+
+range(A,B,Out) :-
+	findall(X, between(A,B,X), Out).
+
+% !decode_arg_modes(++ArgModeList:list<int>, ++NumArgs:int, -ArgModes:list<is_mode>).
+decode_arg_modes(ArgModeList, NumArgs, ArgModes) :-
+	NumArgsOneLess is NumArgs - 1,
+	range(0, NumArgsOneLess, Range),
+	maplist(
+		{ArgModeList, NumArgs}/[Index,Mode]>>(
+			(
+				nth0(Index, ArgModeList, ModeNum);
+				ModeNum = 0
+			),
+			decode_mode(ModeNum, Mode)
+		),
+		Range,
+		ArgModes
+	).
+
+%! decode_intcode(+IntCode:int, -Opcode:opcode, -Arguments:list).
+decode_intcode(IntCode, Opcode, ArgumentsModes) :-
+	number_digits(IntCode, Digits),
+	reverse(Digits,RevDigits),
+	[Oc, OpcodeMode |Arguments] = RevDigits,
+	decode_mode(OpcodeMode, Mode),
+	decode_opcode(Oc, _, InstructionLen),
+	NumArgs is InstructionLen - 1,
+	length(ArgumentsModes, NumArgs),
+	Opcode = opcode(Oc, Mode).
 
 value_at_pos(NumbersList, Pos, Value) :-
 	nth0(Pos, NumbersList, Value).
