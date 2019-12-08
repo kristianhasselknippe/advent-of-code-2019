@@ -96,3 +96,10 @@ main(_) :-
 	read_lines_from_file("./input.txt", Lines),
 	maplist(to_numbers_list, Lines, [InitialState]),
 	perform_operation(InitialState, 0, NextState, NextInstructionPointer).
+
+:- begin_tests(opcode_tests).
+test(test_op_add_immediate) :-
+	perform_operation([1101, 5, 6, 3], 0, [1101, 5, 6, 11], 4).
+test(test_op_add_position) :-
+	perform_operation([0001, 3, 3, 3], 0, [1,3,3,6], 4).
+:- end_tests(opcode_tests).
