@@ -5,19 +5,18 @@
 equal_t(X, Y, T) :-
    =(X, Y, T).
 
-add_op(A,B,Sum) :-
-	Sum is A + B.
-
 mul_op(A,B,Sum) :-
 	Sum is A * B.
 
-opcode(1, add_op).
-opcode(2, mul_op).
-opcode(99, done_op).
+opcode(1, [A,B,Res]>>( Res is A + B)). % Add
+opcode(2, [A,B,Res]>>( Res is A * B)). % Mul
+opcode(3, [A]>>(A)). % Store
+opcode(4, [A]>>(write(A))) % Write
+opcode(99, done_op). % Done
 
 %The intcode as number supplied directly from the input
 decode_intcode(IntCode) :-
-	continue here
+	number_chars
 
 value_at_pos(NumbersList, Pos, Value) :-
 	nth0(Pos, NumbersList, Value).
