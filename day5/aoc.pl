@@ -1,4 +1,4 @@
-:- module(aoc, [read_lines_from_file/2,chars_to_number/2,if_/3,number_digits/2]).
+:- module(aoc, [read_lines_from_file/2,chars_to_number/2,if_/3,number_digits/2, replace_item_at_pos/4, to_numbers_list/2]).
 
 read_lines(Stream, []) :-
 	at_end_of_stream(Stream).
@@ -36,3 +36,11 @@ if_(If_1, Then_0, Else_0) :-
       dif(X, Y)                             % ISO extension
       % throw(error(instantiation_error,_)) % ISO strict
    ).
+
+replace_item_at_pos([_|T],0,E,[E|T]).
+replace_item_at_pos([H|T],P,E,[H|R]) :-
+    P > 0, NP is P-1, replace_item_at_pos(T,NP,E,R).
+
+to_numbers_list(String, NumbersList) :-
+	split_string(String, ",", "", ListOfStrings),
+	maplist(number_string, NumbersList, ListOfStrings).
