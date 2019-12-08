@@ -58,9 +58,11 @@ get_arg(State, Arg, position, Out) :-
 	nth0(Arg, State, Out).
 get_arg(State, Arg, immediate, Arg).
 
-set_arg(State, Pos, Arg, position, NewState) :-
-	format('Set arg (position): ~w, (a: ~w, p: ~w) ~n', [State, Arg, Pos]),
-	replace_item_at_pos(State, Pos, Arg, NewState).
+set_arg(State, Pos, Arg, NewState) :-
+	format('Set arg (position): ~w, (pos: ~w, arg: ~w), NS: ~w ~n', [State, Pos, Arg, NewState]),
+	replace_item_at_pos(State, Pos, Arg, NewState),
+	write('foo'), nl,
+	format('    new state after setting ~w~n',[NewState]).
 
 apply_op(opcode(Op, OpMode), ArgModes, State, IP, NextState) :-
 	(
@@ -71,20 +73,22 @@ apply_op(opcode(Op, OpMode), ArgModes, State, IP, NextState) :-
 		Op = 2,
 		OpImpl = [A,B,Out]>>(Out is A * B)
 	),
-	[AMode,BMode,ResMode|_] = ArgModes,
-	split_at(IP, State, _, [H|[A,B,Res]]),
+	[AMode,BMode|_] = ArgModes,
+	split_at(IP, State, _, [H,A,B,Res|_]),
 	get_arg(State, A, AMode, AVal),
 	get_arg(State, B, BMode, BVal),
 	ResVal is AVal + BVal,
-	set_arg(State, Res, ResVal, ResMode, NextState).
+	set_arg(State, Res, ResVal, NextState).
 
-apply_op(opcode(1, OpMode), ArgModes, State, IP, NextState) :-
-	[AMode,BMode,ResMode|_] = ArgModes,
-	split_at(IP, State, _, [H|[A,B,Res]]),
-	get_arg(State, A, AMode, AVal),
-	get_arg(State, B, BMode, BVal),
-	ResVal is AVal + BVal,
-	set_arg(State, Res, ResVal, ResMode, NextState).
+apply_op(opcode(3, OpMode), ArgModes, State, IP, NextState) :-
+	[InputMode] = ArgModes,
+	format('Arg modes ~w~n', [InputMode]),
+	format('IP: ~w~n', [State]),
+	split_at(IP, State, _, [H,Res,Input|_]),
+	format('Res ~w, Input ~w, mode: ~w~n', [Res, Input, InputMode]),
+	get_arg(State, Input, InputMode, InputVal),
+	write(InputVal),nl,
+	set_arg(State, Res, InputVal, NextState).
 
 perform_operation_using_opcode(State, IP, opcode(OpVal,OpMode), ArgModes, NextState) :-
 	format('Opcode: (~w,~w), ArgModes: ~w~n', [OpVal, OpMode, ArgModes]),
@@ -102,7 +106,6 @@ perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) 
 	opcode(OpcodeNum, _) = Opcode,
 	decode_opcode(OpcodeNum, InstructionLength),
 	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState),
-	format('foo ~w, ~w~n', [InstructionPointer, InstructionLength]), nl,
 	NextInstructionPointer is InstructionPointer + InstructionLength.
 
 main(_) :-
@@ -123,5 +126,8 @@ test(test_op_mul_immediate) :-
 
 test(test_op_mul_position) :-
 	perform_operation([1101, 3, 3, 3], 0, [1,3,3,9], 4).
+
+test(test_op_3_immediate) :-
+	perform_operation([113, 3, 20, 3], 0, [113,3,20,20], 2).
 
 :- end_tests(opcode_tests).
