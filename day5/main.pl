@@ -62,16 +62,29 @@ set_arg(State, Pos, Arg, position, NewState) :-
 	format('Set arg (position): ~w, (a: ~w, p: ~w) ~n', [State, Arg, Pos]),
 	replace_item_at_pos(State, Pos, Arg, NewState).
 
-apply_op(opcode(1, OpMode), ArgModes, State, IP, NextState) :-
-	%format('ARG MODES: ~w~n', [ArgModes]),
+apply_op(opcode(Op, OpMode), ArgModes, State, IP, NextState) :-
+	(
+		Op = 1,
+		OpImpl = [A,B,Out]>>(Out is A + B)
+	);
+	(
+		Op = 2,
+		OpImpl = [A,B,Out]>>(Out is A * B)
+	),
 	[AMode,BMode,ResMode|_] = ArgModes,
 	split_at(IP, State, _, [H|[A,B,Res]]),
 	get_arg(State, A, AMode, AVal),
 	get_arg(State, B, BMode, BVal),
 	ResVal is AVal + BVal,
-	format('ResVal ~w~n', [ResVal]),
-	set_arg(State, Res, ResVal, ResMode, NextState),
-	format('Done applying op\n').
+	set_arg(State, Res, ResVal, ResMode, NextState).
+
+apply_op(opcode(1, OpMode), ArgModes, State, IP, NextState) :-
+	[AMode,BMode,ResMode|_] = ArgModes,
+	split_at(IP, State, _, [H|[A,B,Res]]),
+	get_arg(State, A, AMode, AVal),
+	get_arg(State, B, BMode, BVal),
+	ResVal is AVal + BVal,
+	set_arg(State, Res, ResVal, ResMode, NextState).
 
 perform_operation_using_opcode(State, IP, opcode(OpVal,OpMode), ArgModes, NextState) :-
 	format('Opcode: (~w,~w), ArgModes: ~w~n', [OpVal, OpMode, ArgModes]),
@@ -98,8 +111,17 @@ main(_) :-
 	perform_operation(InitialState, 0, NextState, NextInstructionPointer).
 
 :- begin_tests(opcode_tests).
+
 test(test_op_add_immediate) :-
 	perform_operation([1101, 5, 6, 3], 0, [1101, 5, 6, 11], 4).
+
 test(test_op_add_position) :-
 	perform_operation([0001, 3, 3, 3], 0, [1,3,3,6], 4).
+
+test(test_op_mul_immediate) :-
+	perform_operation([1101, 5, 5, 3], 0, [1,3,3,25], 4).
+
+test(test_op_mul_position) :-
+	perform_operation([1101, 3, 3, 3], 0, [1,3,3,9], 4).
+
 :- end_tests(opcode_tests).
