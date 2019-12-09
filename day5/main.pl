@@ -21,15 +21,18 @@ opcode(_Op,_Mode).
 range(A,B,Out) :-
 	findall(X, between(A,B,X), Out).
 
+decide_mode(ArgModeList, Index, Out) :-
+	length(ArgModeList, Len),
+	Index < Len,
+	nth0(Index, ArgModeList, Out).
+decide_mode(ArgModeList, Index, 0).
+
 % !decode_arg_modes(++ArgModeList:list<int>, ++NumArgs:int, -ArgModes:list<is_mode>).
 decode_arg_modes(ArgModeList, NumArgs, ArgModes) :-
 	NumArgsOneLess is NumArgs - 1,
+	format('Argmodelist ~w~n', [ArgModeList]),
 	range(0, NumArgsOneLess, Range),
-	findall(Mode, (
-				member(Index, Range),
-				(nth0(Index, ArgModeList, Mode));
-				(Mode = 0)
-			), ArgModes).
+	maplist({ArgModeList}/[Index,Mode]>>decide_mode(ArgModeList, Index, Mode), Range, ArgModes).
 
 %! arg_modes(+IntCode:int, -Opcode:opcode, -Arguments:list).
 arg_modes(IntCode, Opcode, ArgModes) :-
@@ -133,17 +136,20 @@ test_perform_operation(State, IP, NIP, NS) :-
 
 :- begin_tests(opcode_tests).
 
+test(intcode_decode_1) :-
+	arg_modes(1101, 1, [1,1,0]).
+
 test(test_op_add_immediate) :-
 	test_perform_operation([1101, 5, 6, 3], 0, [1101, 5, 6, 11], 4).
 
 test(test_op_add_with_negative_immediate) :-
-	test_perform_operation([1101, 5, -6, 3], 0, [1101, 5, 6, -2], 4).
+	test_perform_operation([1101, 5, -6, 3], 0, [1101, 5, -6, -1], 4).
 
 test(test_op_add_position) :-
 	test_perform_operation([0001, 3, 3, 3], 0, [1,3,3,6], 4).
 
 test(test_op_mul_immediate) :-
-	test_perform_operation([1102, 5, 5, 3], 0, [1102,3,3,25], 4).
+	test_perform_operation([1102, 5, 5, 3], 0, [1102,5,5,25], 4).
 
 test(test_op_mul_position) :-
 	test_perform_operation([1102, 3, 3, 3], 0, [1102,3,3,9], 4).

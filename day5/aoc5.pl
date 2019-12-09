@@ -17,8 +17,18 @@ chars_to_number(CharsList, Number) :-
 
 number_digits(Number, Digits) :-
 	number_chars(Number, Chars),
-	maplist([Char,String]>>string_chars(Char, String), Chars, Strings),
-	maplist([String, Number]>>number_string(Number, String), Strings, Digits).
+	maplist([Char, Digit]>>number_chars(Digit, [Char]), Chars, Digits).
+
+:- begin_tests(aoc).
+
+test(number_digits_test_1) :-
+	number_digits(1110, [1,1,1,0]).
+
+
+test(number_digits_test_2) :-
+	number_digits(1110, [1,1,1,0]).
+
+:- end_tests(aoc).
 
 if_(If_1, Then_0, Else_0) :-
    call(If_1, T),
