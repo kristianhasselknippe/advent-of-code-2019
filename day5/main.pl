@@ -52,26 +52,24 @@ get_arg(State, Arg, 0, Out) :-
 	nth0(Arg, State, Out).
 get_arg(_, Arg, 1, Arg).
 set_arg(State, Pos, Arg, NewState) :-
-	format('       Set arg (position): ~w, (pos: ~w, arg: ~w), NS: ~w ~n', [State, Pos, Arg, NewState]),
-	replace_item_at_pos(State, Pos, Arg, NewState).
+	replace_item_at_pos(State, Pos, Arg, NewState),
+	format('       Set arg (position): ~w, (pos: ~w, arg: ~w), NS: ~w ~n', [State, Pos, Arg, NewState]).
 
 apply_op(Op, ArgModes, State, IP, NextState) :-
-	((
-		Op = 1,
-		OpImpl = [A,B,Out]>>(Out is A + B)
-	);
-	(
-		Op = 2,
-		OpImpl = [A,B,Out]>>(Out is A * B)
-	)),
 	[AMode,BMode|_] = ArgModes,
 	split_at(IP, State, _, [_,A,B,Res|_]),
 	get_arg(State, A, AMode, AVal),
-	format('foo: ~w~n', [AVal]),
 	get_arg(State, B, BMode, BVal),
-	call(OpImpl, AVal, BVal, ResVal),
-	format('NS ~w~n', [NextState]),
-	write(State),
+	format('foo: OpImpl: ~w, a: ~w, b: ~w~n', [OpImpl, AVal, BVal]),
+	((
+		Op = 1,
+		ResVal is A + B
+	);
+	(
+		Op = 2,
+		ResVal is A * B
+	)),
+	format('res val: ~w~n', [ResVal]),
 	format('   applying opcode: ~w with ~w and ~w =>(res:~w) res: ~w~n', [Op, A, B, Res, ResVal]),
 	set_arg(State, Res, ResVal, NextState),
 	format('        done~n').
@@ -94,9 +92,9 @@ perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState) :-
 	format('Opcode: ~w, ArgModes: ~w~n', [OpVal, ArgModes]),
 	decode_opcode(OpVal, OpSize),
 	NumArgs is OpSize - 1,
-	format("123NS ~w~n", [NextState]),
 	format('  Applying opcode (op val: ~w, op size: ~w, argModes: ~w)~n', [OpVal, OpSize, ArgModes]),
-	apply_op(OpVal, ArgModes, State, IP, NextState).
+	apply_op(OpVal, ArgModes, State, IP, NextState),
+	format("123NS ~w~n", [NextState]).
 	%format('Next state: ~w~n', [NextState]).
 
 perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) :-
