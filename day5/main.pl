@@ -3,12 +3,6 @@
 :- use_module(library(lists)).
 :- use_module(library(dialect/hprolog)).
 
-is_mode(position).
-is_mode(immediate).
-
-decode_mode(0, position).
-decode_mode(1, immediate).
-
 %! decode_opcode(++Code:int, -InstructionLength:int).
 decode_opcode(1, 4). % add
 decode_opcode(2, 4). % mul
@@ -56,11 +50,12 @@ set_arg(State, Pos, Arg, NewState) :-
 	format('       Set arg (position): ~w, (pos: ~w, arg: ~w), NS: ~w ~n', [State, Pos, Arg, NewState]).
 
 apply_op(Op, ArgModes, State, IP, NextState) :-
+	must_be(list, ArgModes),
 	[AMode,BMode|_] = ArgModes,
 	split_at(IP, State, _, [_,A,B,Res|_]),
 	get_arg(State, A, AMode, AVal),
 	get_arg(State, B, BMode, BVal),
-	format('foo: OpImpl: ~w, a: ~w, b: ~w~n', [OpImpl, AVal, BVal]),
+	format('foo -- a: ~w, b: ~w~n', [AVal, BVal]),
 	((
 		Op = 1,
 		ResVal is A + B
@@ -75,6 +70,7 @@ apply_op(Op, ArgModes, State, IP, NextState) :-
 	format('        done~n').
 
 apply_op(3, ArgModes, State, IP, NextState) :-
+	must_be(list, ArgModes),
 	[InputMode|_] = ArgModes,
 	split_at(IP, State, _, [H,Res|_]),
 	read(UserInput),
@@ -82,6 +78,7 @@ apply_op(3, ArgModes, State, IP, NextState) :-
 	set_arg(State, Res, UserInput, NextState).
 
 apply_op(4, ArgModes, State, IP, NextState) :-
+	must_be(list, ArgModes),
 	[InputMode] = ArgModes,
 	split_at(IP, State, _, [H,Res,Input|_]),
 	get_arg(State, Input, InputMode, InputVal),
