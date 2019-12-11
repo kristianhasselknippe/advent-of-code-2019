@@ -30,41 +30,41 @@ stack_layers([Layer|Rest], Acc, Out) :-
 	length(Rest, RestLen),
 	length(Acc, AccLen),
 	format('Length of rest: ~w, length of Acc ~w~n', [RestLen, AccLen]),
+	format('Layer: ~w, Acc ~w~n', [Layer, Acc]),
 	maplist([X,Y,O]>>(
-				(X #= 0 -> O = Y ; O = X),
-				format('X: ~w, Y: ~w, Out: ~w~n', [X,Y,O])
-			), Layer, Acc, NewAcc),
+				(X = 2 -> O = Y ; O = X)
+				%format('X: ~w, Y: ~w, Out: ~w~n', [X,Y,O])
+			), Acc, Layer, NewAcc),
 	write('Done mapping'), nl,
 	stack_layers(Rest, NewAcc, Out).
 
-create_image(Layers, Out) :-
-	zeroes_array(150, InitialImage),
-	length(Layers, LayersLen),
-	format('Layers length: ~w~n', [LayersLen]),
-	stack_layers(Layers, InitialImage, Out).
+create_image([H|Rest], Out) :-
+	stack_layers(Rest, H, Out).
 
-zeroes_array(0, Out, Out).
-zeroes_array(N, Acc, Out) :-
+init_array(0, _, Out, Out).
+init_array(N, E, Acc, Out) :-
 	N1 is N - 1,
-	zeroes_array(N1, [0|Acc], Out).
-zeroes_array(N, Out) :-
-	zeroes_array(N, [], Out).
+	init_array(N1, E, [E|Acc], Out).
+init_array(N, E, Out) :-
+	init_array(N, E, [], Out).
 
 
 layers_list([], Out, Out).
 layers_list(Numbers, Acc, Out) :-
 	split_at(150, Numbers, Layer, Rest),
 	length(Rest, LenRest),
-	format('Layer ~w, rest ~w~n', [Layer, LenRest]),
-	layers_list(Rest, [Acc|Layer], Out).
+	%format('Layer ~w, rest ~w~n', [Layer, LenRest]),
+	layers_list(Rest, [Layer|Acc], Out).
 layers_list(Numbers, Out) :-
-	layers_list(Numbers, [], Out).
+	layers_list(Numbers, [], Rev),
+	reverse(Rev, Out).
 
 main(_) :-
 	read_lines_from_file('./input.txt', [Input]),
 	number_string(Number, Input),
 	number_digits(Number, NumbersList),
 	layers_list(NumbersList, Layers),
+	%write(Layers),
 	create_image(Layers, FinalImage),
 	write(FinalImage).
 
