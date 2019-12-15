@@ -105,16 +105,15 @@ apply_op(3, ArgModes, State, IP, NextState) :-
 	must_be(list, ArgModes),
 	split_at(IP, State, _, [H,Res|_]),
 	read(UserInput),
-	format('Setting ~w, at ~w, with ~w~n', [State, Res, UserInput]),
-	set_arg(State, Res, UserInput, NextState),
-	format('Done setting ~w~n', [NextState]).
+	set_arg(State, Res, UserInput, NextState).
 
 apply_op(4, ArgModes, State, IP, State) :-
-	must_be(list, ArgModes),
 	[InputMode] = ArgModes,
-	split_at(IP, State, _, [H,Res,Output|_]),
+	format('The mode: ~w~n', [InputMode]),
+	split_at(IP, State, _, [H,Output|_]),
+	format('Ip ~w, H: ~w, Output: ~w~n', [IP, H, Output]),
 	get_arg(State, Output, InputMode, OutputVal),
-	format('Output: ~w~n', [Output]).
+	format('Output: ~w~n', [OutputVal]).
 
 
 perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState) :-
@@ -129,13 +128,14 @@ perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) 
 	arg_modes(Intcode, Opcode, ArgModes),
 	decode_opcode(Opcode, InstructionLength),
 	!,
-	format('Performing: ~w, ~w, ~w, ~w~n', [State, InstructionPointer, Opcode, ArgModes]),
+	%format('Performing: ~w, ~w, ~w, ~w~n', [State, InstructionPointer, Opcode, ArgModes]),
 	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState),
 	NextInstructionPointer is InstructionPointer + InstructionLength,!.
 
 
 run_program_impl(State, IP, Output) :-
 	nth0(IP, State, Inst),
+	format('Performing instruction: ~w~n', [Inst]),
 	((Inst \= 99) ->
 		(
 			perform_operation(State, IP, NextState, NextInstructionPointer),
