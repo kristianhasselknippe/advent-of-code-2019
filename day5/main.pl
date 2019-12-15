@@ -12,6 +12,19 @@ decode_opcode(3, 2). % input
 decode_opcode(4, 2). % output
 decode_opcode(99, 1). %done
 
+%Opcode 5 is jump-if-true: if the first parameter is non-zero,
+%it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+decode_opcode(5, 3).
+%Opcode 6 is jump-if-false: if the first parameter is zero,
+%it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+decode_opcode(6, 3).
+%Opcode 7 is less than: if the first parameter is less than the second parameter,
+%it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+decode_opcode(7, 4).
+%Opcode 8 is equals: if the first parameter is equal to the second parameter,
+%it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+decode_opcode(8, 4).
+
 opcode(_Op,_Mode).
 
 range(A,B,Out) :-
@@ -86,7 +99,7 @@ test('set arg 1') :-
 :- end_tests(set_arg).
 
 % apply_op(++Op:integer, ++ArgModes:list, ++State:list, ++IP:integer, -NextState:list)
-apply_op(Op, ArgModes, State, IP, NextState) :-
+apply_op(Op, ArgModes, State, IP, NextState, NextIP) :-
 	[AMode,BMode|_] = ArgModes,
 	split_at(IP, State, _, [_,A,B,Res|_]),
 	get_arg(State, A, AMode, AVal),
@@ -99,27 +112,64 @@ apply_op(Op, ArgModes, State, IP, NextState) :-
 		Op = 2,
 		ResVal is AVal * BVal
 	)),
-	set_arg(State, Res, ResVal, NextState).
+	set_arg(State, Res, ResVal, NextState),
+	NextIP is IP + 4.
 
-apply_op(3, ArgModes, State, IP, NextState) :-
-	must_be(list, ArgModes),
+% Read input and put at address of first arg
+apply_op(3, ArgModes, State, IP, NextState, NextIP) :-
 	split_at(IP, State, _, [H,Res|_]),
 	read(UserInput),
-	set_arg(State, Res, UserInput, NextState).
+	set_arg(State, Res, UserInput, NextState),
+	NextIP is IP + 2.
 
-apply_op(4, ArgModes, State, IP, State) :-
+% Write arg to output
+apply_op(4, ArgModes, State, IP, State, NextIP) :-
 	[InputMode] = ArgModes,
-	format('The mode: ~w~n', [InputMode]),
 	split_at(IP, State, _, [H,Output|_]),
-	format('Ip ~w, H: ~w, Output: ~w~n', [IP, H, Output]),
 	get_arg(State, Output, InputMode, OutputVal),
+	NextIP is IP + 2,
 	format('Output: ~w~n', [OutputVal]).
 
+%Opcode 5 is jump-if-true: if the first parameter is non-zero,
+%it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+apply_op(5, ArgModes, State, IP, State, NextIP) :-
+	[PredMode, NewIPMode|_] = ArgModes,
+	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
+	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
+	get_arg(State, Pred, PredMode, PredVal),
+	(
+		PredVal \= 0 ->
+		(format('Jump if true was true'),nl,
+		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
+		(NextIP is IP + 3)
+	).
 
-perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState) :-
+apply_op(5, ArgModes, State, IP, State, NextIP) :-
+	[PredMode, NewIPMode|_] = ArgModes,
+	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
+	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
+	get_arg(State, Pred, PredMode, PredVal),
+	(
+		PredVal = 0 -> 
+		(format('Jump if true was true'),nl,
+		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
+		(NextIP is IP + 3)
+	).
+
+%Opcode 6 is jump-if-false: if the first parameter is zero,
+%it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+
+%Opcode 7 is less than: if the first parameter is less than the second parameter,
+%it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+
+%Opcode 8 is equals: if the first parameter is equal to the second parameter,
+%it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+
+
+perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState, NextIP) :-
 	decode_opcode(OpVal, OpSize),
 	NumArgs is OpSize - 1,
-	apply_op(OpVal, ArgModes, State, IP, NextState).
+	apply_op(OpVal, ArgModes, State, IP, NextState, NextIP).
 
 perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) :-
 	nth0(InstructionPointer, State, Intcode),
@@ -129,8 +179,7 @@ perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) 
 	decode_opcode(Opcode, InstructionLength),
 	!,
 	%format('Performing: ~w, ~w, ~w, ~w~n', [State, InstructionPointer, Opcode, ArgModes]),
-	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState),
-	NextInstructionPointer is InstructionPointer + InstructionLength,!.
+	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState, NextInstructionPointer),!.
 
 
 run_program_impl(State, IP, Output) :-
