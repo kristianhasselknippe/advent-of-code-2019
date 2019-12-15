@@ -1,4 +1,4 @@
-:- module(aoc7, [read_lines_from_file/2,chars_to_number/2,if_/3, number_digits/2, replace_item_at_pos/4, to_numbers_list/2]).
+:- module(aoc12, [read_lines_from_file/2,chars_to_number/2,if_/3, number_digits/2, replace_item_at_pos/4, to_numbers_list/2]).
 
 read_lines(Stream, []) :-
 	at_end_of_stream(Stream).
