@@ -73,12 +73,17 @@ get_arg(State, Arg, 0, Out) :-
 	nth0(Arg, State, Out),!.
 get_arg(_, Arg, 1, Arg).
 set_arg(State, Pos, Arg, NewState) :-
-	replace_item_at_pos(State, Pos, Arg, NewState).
+	replace_item_at_pos(State, Pos, Arg, NewState), !.
 
 :- begin_tests(get_arg).
 test('get arg 1') :-
 	get_arg([1,2,3,4], 3, 0, 4).
 :- end_tests(get_arg).
+
+:- begin_tests(set_arg).
+test('set arg 1') :-
+	set_arg([1,2,3,4], 3, 123, [1,2,3,123]).
+:- end_tests(set_arg).
 
 % apply_op(++Op:integer, ++ArgModes:list, ++State:list, ++IP:integer, -NextState:list)
 apply_op(Op, ArgModes, State, IP, NextState) :-
@@ -98,17 +103,18 @@ apply_op(Op, ArgModes, State, IP, NextState) :-
 
 apply_op(3, ArgModes, State, IP, NextState) :-
 	must_be(list, ArgModes),
-	[InputMode|_] = ArgModes,
 	split_at(IP, State, _, [H,Res|_]),
 	read(UserInput),
-	set_arg(State, Res, UserInput, NextState).
+	format('Setting ~w, at ~w, with ~w~n', [State, Res, UserInput]),
+	set_arg(State, Res, UserInput, NextState),
+	format('Done setting ~w~n', [NextState]).
 
-apply_op(4, ArgModes, State, IP, NextState) :-
+apply_op(4, ArgModes, State, IP, State) :-
 	must_be(list, ArgModes),
 	[InputMode] = ArgModes,
-	split_at(IP, State, _, [H,Res,Input|_]),
-	get_arg(State, Input, InputMode, InputVal),
-	set_arg(State, Res, InputVal, NextState).
+	split_at(IP, State, _, [H,Res,Output|_]),
+	get_arg(State, Output, InputMode, OutputVal),
+	format('Output: ~w~n', [Output]).
 
 
 perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState) :-
@@ -123,6 +129,7 @@ perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) 
 	arg_modes(Intcode, Opcode, ArgModes),
 	decode_opcode(Opcode, InstructionLength),
 	!,
+	format('Performing: ~w, ~w, ~w, ~w~n', [State, InstructionPointer, Opcode, ArgModes]),
 	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState),
 	NextInstructionPointer is InstructionPointer + InstructionLength,!.
 
@@ -164,6 +171,9 @@ test(test_op_mul_position_1) :-
 
 test(test_more_1) :-
 	run_program([1102, 3, 3, 3, 1101, 20, 20, 0,99], [40,3,3,9,1101,20,20,0,99]).
+
+%test(user_input_1) :-
+%	perform_operation([1103, 2, 0], 0, [1103, 2, 250], 2).
 
 %test(test_op_3_immediate) :-
 %	perform_operation([113, 3, 20, 3], 0, [113,3,20,20], 3).
