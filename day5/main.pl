@@ -137,34 +137,66 @@ apply_op(5, ArgModes, State, IP, State, NextIP) :-
 	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
 	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
 	get_arg(State, Pred, PredMode, PredVal),
+	format('5: Pred: ~w, PredVal ~w~n', [Pred, PredVal]),
 	(
 		PredVal \= 0 ->
-		(format('Jump if true was true'),nl,
-		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
-		(NextIP is IP + 3)
-	).
-
-apply_op(5, ArgModes, State, IP, State, NextIP) :-
-	[PredMode, NewIPMode|_] = ArgModes,
-	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
-	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
-	get_arg(State, Pred, PredMode, PredVal),
-	(
-		PredVal = 0 -> 
-		(format('Jump if true was true'),nl,
+		(format('    Jump if true was true'),nl,
 		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
 		(NextIP is IP + 3)
 	).
 
 %Opcode 6 is jump-if-false: if the first parameter is zero,
 %it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+apply_op(6, ArgModes, State, IP, State, NextIP) :-
+	[PredMode, NewIPMode|_] = ArgModes,
+	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
+	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
+	get_arg(State, Pred, PredMode, PredVal),
+	format('6: Pred: ~w, PredVal ~w~n', [Pred, PredVal]),
+	(
+		PredVal = 0 -> 
+		(format('    Jump if false was true'),nl,
+		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
+		(NextIP is IP + 3)
+	).
 
 %Opcode 7 is less than: if the first parameter is less than the second parameter,
 %it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+apply_op(7, ArgModes, State, IP, NextState, NextIP) :-
+	[AMode,BMode|_] = ArgModes,
+	format('AMode: ~w, BMode: ~w~n', [AMode, BMode]),
+	split_at(IP, State, _, [_, A,B,Res|_]),
+	format('A ~w, B ~w, Res ~w~n', [A,B,Res]),
+	get_arg(State, A, AMode, AVal),
+	get_arg(State, B, BMode, BVal),
+	format('7: AVal: ~w, BVal: ~w~n', [AVal, BVal]),
+	(
+		AVal < BVal -> 
+		(format('    Less than was true'),nl,
+		 set_arg(State, Res, 1, NextState),
+		 (NextIP is IP + 4));
+		(format('    Less than was false'),nl,
+		 set_arg(State, Res, 0, NextState),
+		 (NextIP is IP + 4))
+	).
 
 %Opcode 8 is equals: if the first parameter is equal to the second parameter,
 %it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
-
+apply_op(8, ArgModes, State, IP, NextState, NextIP) :-
+	[AMode,BMode|_] = ArgModes,
+	split_at(IP, State, _, [_, A,B,Res|_]),
+	get_arg(State, A, AMode, AVal),
+	get_arg(State, B, BMode, BVal),
+	format('8: AVal: ~w, BVal: ~w~n', [AVal, BVal]),
+	(
+		AVal = BVal ->
+		(format('    Equals than was true'),nl,
+		 set_arg(State, Res, 1, NextState),
+		 (NextIP is IP + 4));
+		(format('    Equals than was true'),nl,
+		 set_arg(State, Res, 0, NextState),
+		 (NextIP is IP + 4))
+	).
 
 perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState, NextIP) :-
 	decode_opcode(OpVal, OpSize),
@@ -194,8 +226,7 @@ run_program_impl(State, IP, Output) :-
 		)).
 
 run_program(State, OutputState) :-
-	run_program_impl(State, 0, OutputState),
-	format('The output state: ~w~n', [OutputState]).
+	run_program_impl(State, 0, OutputState).
 
 main(_) :-
 	read_lines_from_file("./input.txt", Lines),
