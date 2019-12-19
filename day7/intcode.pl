@@ -127,8 +127,7 @@ apply_op(4, ArgModes, State, IP, State, NextIP) :-
 	[InputMode] = ArgModes,
 	split_at(IP, State, _, [H,Output|_]),
 	get_arg(State, Output, InputMode, OutputVal),
-	NextIP is IP + 2,
-	format('Output: ~w~n', [OutputVal]).
+	NextIP is IP + 2.
 
 %Opcode 5 is jump-if-true: if the first parameter is non-zero,
 %it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
@@ -137,12 +136,10 @@ apply_op(5, ArgModes, State, IP, State, NextIP) :-
 	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
 	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
 	get_arg(State, Pred, PredMode, PredVal),
-	format('5: Pred: ~w, PredVal ~w~n', [Pred, PredVal]),
 	(
 		PredVal \= 0 ->
-		(format('    Jump if true was true'),nl,
-		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
-		(NextIP is IP + 3)
+		get_arg(State, NewInstructionPointer, NewIPMode, NextIP);
+		NextIP is IP + 3
 	).
 
 %Opcode 6 is jump-if-false: if the first parameter is zero,
@@ -152,31 +149,24 @@ apply_op(6, ArgModes, State, IP, State, NextIP) :-
 	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
 	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
 	get_arg(State, Pred, PredMode, PredVal),
-	format('6: Pred: ~w, PredVal ~w~n', [Pred, PredVal]),
 	(
 		PredVal = 0 -> 
-		(format('    Jump if false was true'),nl,
-		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP));
-		(NextIP is IP + 3)
+		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP);
+		NextIP is IP + 3
 	).
 
 %Opcode 7 is less than: if the first parameter is less than the second parameter,
 %it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
 apply_op(7, ArgModes, State, IP, NextState, NextIP) :-
 	[AMode,BMode|_] = ArgModes,
-	format('AMode: ~w, BMode: ~w~n', [AMode, BMode]),
 	split_at(IP, State, _, [_, A,B,Res|_]),
-	format('A ~w, B ~w, Res ~w~n', [A,B,Res]),
 	get_arg(State, A, AMode, AVal),
 	get_arg(State, B, BMode, BVal),
-	format('7: AVal: ~w, BVal: ~w~n', [AVal, BVal]),
 	(
 		AVal < BVal -> 
-		(format('    Less than was true'),nl,
-		 set_arg(State, Res, 1, NextState),
+		 (set_arg(State, Res, 1, NextState),
 		 (NextIP is IP + 4));
-		(format('    Less than was false'),nl,
-		 set_arg(State, Res, 0, NextState),
+		 (set_arg(State, Res, 0, NextState),
 		 (NextIP is IP + 4))
 	).
 
@@ -187,14 +177,11 @@ apply_op(8, ArgModes, State, IP, NextState, NextIP) :-
 	split_at(IP, State, _, [_, A,B,Res|_]),
 	get_arg(State, A, AMode, AVal),
 	get_arg(State, B, BMode, BVal),
-	format('8: AVal: ~w, BVal: ~w~n', [AVal, BVal]),
 	(
 		AVal = BVal ->
-		(format('    Equals than was true'),nl,
-		 set_arg(State, Res, 1, NextState),
+		 (set_arg(State, Res, 1, NextState),
 		 (NextIP is IP + 4));
-		(format('    Equals than was true'),nl,
-		 set_arg(State, Res, 0, NextState),
+		 (set_arg(State, Res, 0, NextState),
 		 (NextIP is IP + 4))
 	).
 
@@ -203,24 +190,25 @@ perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState, NextIP) :-
 	NumArgs is OpSize - 1,
 	apply_op(OpVal, ArgModes, State, IP, NextState, NextIP).
 
-perform_operation(State, InstructionPointer, NextState, NextInstructionPointer) :-
+perform_operation(ProgramState, NextState, NextInstructionPointer) :-
+	program{state:State, input:ProgInput, output:ProgOutput, instructionPointer:InstructionPointer} = Program,
 	nth0(InstructionPointer, State, Intcode),
 	length(State,LL),
 	ground(Intcode),
 	arg_modes(Intcode, Opcode, ArgModes),
 	decode_opcode(Opcode, InstructionLength),
 	!,
-	%format('Performing: ~w, ~w, ~w, ~w~n', [State, InstructionPointer, Opcode, ArgModes]),
 	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState, NextInstructionPointer),!.
 
 
-run_program_impl(program{state:State, input:_ProgInput, output:_ProgOutput}, IP, Output) :-
+run_program_impl(ProgramState, Output) :-
+	program{state:State, input:ProgInput, output:ProgOutput, instructionPointer:IP} = Program,
 	nth0(IP, State, Inst),
 	((Inst \= 99) ->
 		(
-			perform_operation(State, IP, NextState, NextInstructionPointer),
+			perform_operation(ProgramState, NextState, NextInstructionPointer),
 			run_program_impl(
-				program{state:NextState, input: _ProgInput, output:_ProgOutput},
+				program{state:NextState, input: ProgInput, output:ProgOutput},
 				NextInstructionPointer,
 				Output
 			)
@@ -232,15 +220,15 @@ error:has_type(number_list, X) :-
 	the(list, X),
 	maplist([I]>>(the(number, I)), X).
 
-error:has_type(intcode_program, program{state:State, input:Input, output:Output}) :-
+error:has_type(intcode_program_state, program{state:State, input:Input, output:Output, instructionPointer:IP}) :-
 	the(number_list, State),
 	the(number_list, Input),
-	the(number_list, Output).
+	the(number_list, Output),
+	the(number, IP).
 
-% run_program(++Program:intcode_program, Read, Write, --OutputState:number_list) is det.
-run_program(Program, OutputState) :-
-	run_program_impl(Program, 0, OutputState).
-
+% run_program(++ProgramState:intcode_program_state, Read, Write, --OutputState:number_list) is det.
+run_program(ProgramState, OutputState) :-
+	run_program_impl(ProgramState, OutputState).
 
 :- begin_tests(opcode_tests).
 test(test_op_add_immediate) :-
@@ -259,7 +247,7 @@ test(test_op_mul_position_1) :-
 	perform_operation([1102, 3, 3, 3], 0, [1102,3,3,9], 4).
 
 test(test_more_1) :-
-	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:X}, [40,3,3,9,1101,20,20,0,99]).
+	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:X,instructionPointer:0}, [40,3,3,9,1101,20,20,0,99]).
 
 %test(user_input_1) :-
 %	perform_operation([1103, 2, 0], 0, [1103, 2, 250], 2).
