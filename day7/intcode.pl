@@ -191,7 +191,11 @@ perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState, NextIP) :-
 	apply_op(OpVal, ArgModes, State, IP, NextState, NextIP).
 
 perform_operation(ProgramState, NextState, NextInstructionPointer) :-
-	program{state:State, input:ProgInput, output:ProgOutput, instructionPointer:InstructionPointer} = Program,
+	program{state:State,
+			input:ProgInput,
+			output:ProgOutput,
+			instructionPointer:InstructionPointer} = ProgramState,
+	format('Performing operation on: ~w~n', [State]),
 	nth0(InstructionPointer, State, Intcode),
 	length(State,LL),
 	ground(Intcode),
@@ -202,14 +206,19 @@ perform_operation(ProgramState, NextState, NextInstructionPointer) :-
 
 
 run_program_impl(ProgramState, Output) :-
-	program{state:State, input:ProgInput, output:ProgOutput, instructionPointer:IP} = Program,
+	program{state:State,
+			input:ProgInput,
+			output:ProgOutput,
+			instructionPointer:IP} = ProgramState,
 	nth0(IP, State, Inst),
 	((Inst \= 99) ->
 		(
 			perform_operation(ProgramState, NextState, NextInstructionPointer),
 			run_program_impl(
-				program{state:NextState, input: ProgInput, output:ProgOutput},
-				NextInstructionPointer,
+				program{state:NextState,
+						input: ProgInput,
+						output:ProgOutput,
+						instructionPointer: NextInstructionPointer},
 				Output
 			)
 		);(
@@ -230,25 +239,34 @@ error:has_type(intcode_program_state, program{state:State, input:Input, output:O
 run_program(ProgramState, OutputState) :-
 	run_program_impl(ProgramState, OutputState).
 
+init_program_state(InitialState, Out) :-
+	Out = program{state:InitialState,input:[],output:[],instructionPointer:0}.
+
 :- begin_tests(opcode_tests).
 test(test_op_add_immediate) :-
-	perform_operation([1101, 5, 6, 3], 0, [1101, 5, 6, 11], 4).
+	init_program_state([1101, 5, 6, 3], Init),
+	format('Init: ~w~n', [Init]),
+	perform_operation(Init, [1101, 5, 6, 11], 4).
 
 test(test_op_add_with_negative_immediate) :-
-	perform_operation([1101, 5, -6, 3], 0, [1101, 5, -6, -1], 4).
+	init_program_state([1101, 5, -6, 3], Init),
+	perform_operation(Init, [1101, 5, -6, -1], 4).
 
 test(test_op_add_position) :-
-	perform_operation([0001, 3, 3, 3], 0, [1,3,3,6], 4).
+	init_program_state([0001, 3, 3, 3], Init),
+	perform_operation(Init, [1,3,3,6], 4).
 
 test(test_op_mul_immediate) :-
-	perform_operation([1102, 5, 5, 3], 0, [1102,5,5,25], 4).
+	init_program_state([1102, 5, 5, 3], Init),
+	perform_operation(Init, [1102,5,5,25], 4).
 
 test(test_op_mul_position_1) :-
-	perform_operation([1102, 3, 3, 3], 0, [1102,3,3,9], 4).
+	init_program_state([1102, 3, 3, 3], Init),
+	perform_operation(Init, [1102,3,3,9], 4).
 
-test(test_more_1) :-
-	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:X,instructionPointer:0}, [40,3,3,9,1101,20,20,0,99]).
-
+%test(test_more_1) :-
+%	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:X,instructionPointer:0}, [40,3,3,9,1101,20,20,0,99]).
+%
 %test(user_input_1) :-
 %	perform_operation([1103, 2, 0], 0, [1103, 2, 250], 2).
 
