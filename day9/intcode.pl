@@ -35,7 +35,7 @@ get_mode(ArgModeList, Index, Out) :-
 	length(ArgModeList, Len),
 	Index < Len,
 	nth0(Index, ArgModeList, Out),!.
-get_mode(_ArgModeList, _Index, 0).
+get_mode(ArgModeList, Index, 0).
 
 :- begin_tests(get_mode).
 test('get mode base case 1') :-
@@ -98,22 +98,12 @@ test('set arg 1') :-
 	set_arg([1,2,3,4], 3, 123, [1,2,3,123]).
 :- end_tests(set_arg).
 
-% operation_arguments(++ProgramState:int_program_state, --Args:list) is det.
-operation_arguments(ProgramState, Arg1) :-
-	split_at(ProgramState.instructionPointer, ProgramState.state, _, [_,Arg1|_]).
-operation_arguments(ProgramState, Arg1, Arg2) :-
-	split_at(ProgramState.instructionPointer, ProgramState.state, _, [_,Arg1,Arg2|_]).
-operation_arguments(ProgramState, Arg1, Arg2, Arg3) :-
-	split_at(ProgramState.instructionPointer, ProgramState.state, _, [_,Arg1,Arg2,Arg3|_]).
-operation_arguments(ProgramState, Arg1, Arg2, Arg3, Arg4) :-
-	split_at(ProgramState.instructionPointer, ProgramState.state, _, [_,Arg1,Arg2,Arg3,Arg4|_]).
-
 % apply_op(++Op:integer, ++ArgModes:list, ++State:list, ++IP:integer, -NextState:list)
-apply_op(Op, ArgModes, ProgramState, NextProgramState) :-
+apply_op(Op, ArgModes, State, IP, NextState, NextIP) :-
 	[AMode,BMode|_] = ArgModes,
-	operation_arguments(ProgramState, A,B,Res),
-	get_arg(ProgramState.state, A, AMode, AVal),
-	get_arg(ProgramState.state, B, BMode, BVal),
+	split_at(IP, State, _, [_,A,B,Res|_]),
+	get_arg(State, A, AMode, AVal),
+	get_arg(State, B, BMode, BVal),
 	((
 		Op = 1,
 		ResVal is AVal + BVal
@@ -122,118 +112,117 @@ apply_op(Op, ArgModes, ProgramState, NextProgramState) :-
 		Op = 2,
 		ResVal is AVal * BVal
 	)),
-	set_arg(ProgramState.state, Res, ResVal, NextState),
-	NextIP is ProgramState.instructionPointer + 4,
-	NextProgramState = ProgramState.put(instructionPointer, NextIP).put(state, NextState).
+	set_arg(State, Res, ResVal, NextState),
+	NextIP is IP + 4.
 
 % Read input and put at address of first arg
-apply_op(3, _ArgModes, ProgramState, NextProgramState) :-
-	operation_arguments(ProgramState, Res),
-	[UserInput|InputLeft] = ProgramState.input,
-	set_arg(ProgramState.state, Res, UserInput, NextState),
-	NextIP is ProgramState.instructionPointer + 2,
-	NextProgramState = ProgramState.put(state, NextState).put(input, InputLeft).put(instructionPointer, NextIP).
+apply_op(3, ArgModes, State, IP, NextState, NextIP) :-
+	split_at(IP, State, _, [H,Res|_]),
+	read(UserInput),
+	set_arg(State, Res, UserInput, NextState),
+	NextIP is IP + 2.
 
 % Write arg to output
-apply_op(4, ArgModes, ProgramState, NextProgramState) :-
+apply_op(4, ArgModes, State, IP, State, NextIP) :-
 	[InputMode] = ArgModes,
-	operation_arguments(ProgramState, Output),
-	get_arg(ProgramState.state, Output, InputMode, OutputVal),
-	NextIP is ProgramState.instructionPointer + 2,
-	append(State.output, [OutputVal], NextOutput),
-	NextProgramState = State.put(output, NextOutput).put(instructionPointer, NextIP).
+	split_at(IP, State, _, [H,Output|_]),
+	get_arg(State, Output, InputMode, OutputVal),
+	NextIP is IP + 2.
 
 %Opcode 5 is jump-if-true: if the first parameter is non-zero,
 %it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
-apply_op(5, ArgModes, ProgramState, NextProgramState) :-
+apply_op(5, ArgModes, State, IP, State, NextIP) :-
 	[PredMode, NewIPMode|_] = ArgModes,
 	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
-	operation_arguments(ProgramState, Pred, NewInstructionPointer),
-	get_arg(ProgramState.state, Pred, PredMode, PredVal),
+	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
+	get_arg(State, Pred, PredMode, PredVal),
 	(
-		(PredVal \= 0 ->
-		get_arg(ProgramState.state, NewInstructionPointer, NewIPMode, NextIP);
-		NextIP is ProgramState.instructionPointer + 3),
-		NextProgramState = ProgramState.put(instructionPointer, NextIP)
+		PredVal \= 0 ->
+		get_arg(State, NewInstructionPointer, NewIPMode, NextIP);
+		NextIP is IP + 3
 	).
 
 %Opcode 6 is jump-if-false: if the first parameter is zero,
 %it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
-apply_op(6, ArgModes, ProgramState, NextProgramState) :-
+apply_op(6, ArgModes, State, IP, State, NextIP) :-
 	[PredMode, NewIPMode|_] = ArgModes,
 	% TODO: Make a pred for this so its more clear what it does (getting current instruction args)
-	operation_arguments(ProgramState, Pred, NewInstructionPointer),
-	get_arg(ProgramState, Pred, PredMode, PredVal),
+	split_at(IP, State, _, [H,Pred,NewInstructionPointer|_]),
+	get_arg(State, Pred, PredMode, PredVal),
 	(
-		PredVal = 0 ->
-		get_arg(ProgramState, NewInstructionPointer, NewIPMode, NextIP);
-		NextIP is ProgramState.instructionPointer + 3
-	),
-	NextProgramState = ProgramState.put(instructionPointer, NextIP).
+		PredVal = 0 -> 
+		 get_arg(State, NewInstructionPointer, NewIPMode, NextIP);
+		NextIP is IP + 3
+	).
 
 %Opcode 7 is less than: if the first parameter is less than the second parameter,
 %it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
-apply_op(7, ArgModes, ProgramState, NextProgramState) :-
+apply_op(7, ArgModes, State, IP, NextState, NextIP) :-
 	[AMode,BMode|_] = ArgModes,
-	operation_arguments(ProgramState, A, B, Res),
-	get_arg(ProgramState, A, AMode, AVal),
-	get_arg(ProgramState, B, BMode, BVal),
+	split_at(IP, State, _, [_, A,B,Res|_]),
+	get_arg(State, A, AMode, AVal),
+	get_arg(State, B, BMode, BVal),
 	(
-		AVal < BVal ->
-		 (set_arg(ProgramState.state, Res, 1, NextState),
-		  (NextIP is ProgramState.instructionPointer + 4));
-		 (set_arg(ProgramState.state, Res, 0, NextState),
-		 (NextIP is ProgramState.instructionPointer + 4))
-	),
-	NextProgramState = ProgramState.put(instructionPointer, NextIP).put(state, NextState).
+		AVal < BVal -> 
+		 (set_arg(State, Res, 1, NextState),
+		 (NextIP is IP + 4));
+		 (set_arg(State, Res, 0, NextState),
+		 (NextIP is IP + 4))
+	).
 
 %Opcode 8 is equals: if the first parameter is equal to the second parameter,
 %it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
-apply_op(8, ArgModes, ProgramState, NextProgramState) :-
+apply_op(8, ArgModes, State, IP, NextState, NextIP) :-
 	[AMode,BMode|_] = ArgModes,
-	operation_arguments(ProgramState, A,B,Res),
-	get_arg(ProgramState, A, AMode, AVal),
-	get_arg(ProgramState, B, BMode, BVal),
+	split_at(IP, State, _, [_, A,B,Res|_]),
+	get_arg(State, A, AMode, AVal),
+	get_arg(State, B, BMode, BVal),
 	(
 		AVal = BVal ->
-		 (set_arg(ProgramState.state, Res, 1, NextState),
-		 (NextIP is ProgramState.instructionPointer + 4));
-		 (set_arg(ProgramState.state, Res, 0, NextState),
-		 (NextIP is ProgramState.instructionPointer + 4))
-	),
-	NextProgramState = ProgramState.put(instructionPointer, NextIP).put(state, NextState).
+		 (set_arg(State, Res, 1, NextState),
+		 (NextIP is IP + 4));
+		 (set_arg(State, Res, 0, NextState),
+		 (NextIP is IP + 4))
+	).
 
-perform_operation_using_opcode(ProgramState, OpVal, ArgModes, NextProgramState) :-
-	apply_op(OpVal, ArgModes, ProgramState, NextProgramState).
+perform_operation_using_opcode(State, IP, OpVal, ArgModes, NextState, NextIP) :-
+	decode_opcode(OpVal, OpSize),
+	NumArgs is OpSize - 1,
+	apply_op(OpVal, ArgModes, State, IP, NextState, NextIP).
 
-perform_operation(ProgramState, NextProgramState) :-
+perform_operation(ProgramState, NextState, NextInstructionPointer) :-
 	program{state:State,
-			input:_,
-			output:_,
+			input:ProgInput,
+			output:ProgOutput,
 			instructionPointer:InstructionPointer} = ProgramState,
 	format('Performing operation on: ~w~n', [State]),
 	nth0(InstructionPointer, State, Intcode),
+	length(State,LL),
 	ground(Intcode),
 	arg_modes(Intcode, Opcode, ArgModes),
+	decode_opcode(Opcode, InstructionLength),
 	!,
-	perform_operation_using_opcode(ProgramState, Opcode, ArgModes, NextProgramState),!.
+	perform_operation_using_opcode(State, InstructionPointer, Opcode, ArgModes, NextState, NextInstructionPointer),!.
 
 
 run_program_impl(ProgramState, Output) :-
 	program{state:State,
-			input:_,
-			output:_,
+			input:ProgInput,
+			output:ProgOutput,
 			instructionPointer:IP} = ProgramState,
 	nth0(IP, State, Inst),
 	((Inst \= 99) ->
 		(
-			perform_operation(ProgramState, NextProgramState),
+			perform_operation(ProgramState, NextState, NextInstructionPointer),
 			run_program_impl(
-				NextProgramState,
+				program{state:NextState,
+						input: ProgInput,
+						output:ProgOutput,
+						instructionPointer: NextInstructionPointer},
 				Output
 			)
 		);(
-			Output = ProgramState
+			Output = State
 		)).
 
 error:has_type(number_list, X) :-
@@ -257,29 +246,29 @@ init_program_state(InitialState, Out) :-
 test(test_op_add_immediate) :-
 	init_program_state([1101, 5, 6, 3], Init),
 	format('Init: ~w~n', [Init]),
-	perform_operation(Init, program{state:[1101, 5, 6, 11],input:_,output:_,instructionPointer:4}).
+	perform_operation(Init, [1101, 5, 6, 11], 4).
 
 test(test_op_add_with_negative_immediate) :-
 	init_program_state([1101, 5, -6, 3], Init),
-	perform_operation(Init, program{state:[1101, 5, -6, -1],input:_,output:_,instructionPointer:4}).
+	perform_operation(Init, [1101, 5, -6, -1], 4).
 
 test(test_op_add_position) :-
 	init_program_state([0001, 3, 3, 3], Init),
-	perform_operation(Init, program{state:[1,3,3,6],input:_,output:_,instructionPointer:4}).
+	perform_operation(Init, [1,3,3,6], 4).
 
 test(test_op_mul_immediate) :-
 	init_program_state([1102, 5, 5, 3], Init),
-	perform_operation(Init, program{state:[1102,5,5,25],input:_,output:_,instructionPointer:4}).
+	perform_operation(Init, [1102,5,5,25], 4).
 
 test(test_op_mul_position_1) :-
 	init_program_state([1102, 3, 3, 3], Init),
 	perform_operation(Init, [1102,3,3,9], 4).
 
-test(test_more_1) :-
-	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:[],instructionPointer:0}, [40,3,3,9,1101,20,20,0,99]).
+%test(test_more_1) :-
+%	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:X,instructionPointer:0}, [40,3,3,9,1101,20,20,0,99]).
 %
-test(user_input_1) :-
-	perform_operation(program{state:[1103, 2, 0], input:[250],output:[],instructionPointer:0}, [1103, 2, 250], 2).
+%test(user_input_1) :-
+%	perform_operation([1103, 2, 0], 0, [1103, 2, 250], 2).
 
 %test(test_op_3_immediate) :-
 %	perform_operation([113, 3, 20, 3], 0, [113,3,20,20], 3).
