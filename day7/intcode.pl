@@ -273,13 +273,13 @@ test(test_op_mul_immediate) :-
 
 test(test_op_mul_position_1) :-
 	init_program_state([1102, 3, 3, 3], Init),
-	perform_operation(Init, [1102,3,3,9], 4).
+	perform_operation(Init, program{state:[1102,3,3,9],input:_,output:_,instructionPointer:4}).
 
 test(test_more_1) :-
-	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:[],instructionPointer:0}, [40,3,3,9,1101,20,20,0,99]).
+	run_program(program{state:[1102, 3, 3, 3, 1101, 20, 20, 0,99],input:[],output:[],instructionPointer:0}, program{state:[40,3,3,9,1101,20,20,0,99],input:[],output:[],instructionPointer:8}).
 %
 test(user_input_1) :-
-	perform_operation(program{state:[1103, 2, 0], input:[250],output:[],instructionPointer:0}, [1103, 2, 250], 2).
+	perform_operation(program{state:[1103, 2, 0], input:[250],output:[],instructionPointer:0}, program{state:[1103, 2, 250],input:[],output:[],instructionPointer:2}).
 
 %test(test_op_3_immediate) :-
 %	perform_operation([113, 3, 20, 3], 0, [113,3,20,20], 3).
